@@ -222,6 +222,8 @@ async def on_user_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 # =================== Sikl vazifa yordamchilari ===================
 async def ensure_cycle_assignment(telegram_id: int, cyc: dt.date) -> str | None:
+    if rotation.before_start(cyc):
+        return None
     existing = await db.get_assignment(telegram_id, cyc)
     if existing:
         return existing["areas"]
@@ -274,10 +276,16 @@ async def show_my_task(update, context, resident) -> None:
     if is_away_on(resident, today):
         await update.message.reply_text(texts.away_status(fmt_short(resident["away_until"])))
         return
+    if rotation.before_start(today):
+        await update.message.reply_text(
+            "🧹 Tozalik vazifalari <b>23-iyun</b>dan boshlanadi.\n"
+            "Hozircha 🚪 eshik, 🍳 oshxona, 🚿 dush hisobotlarini yuborishingiz mumkin.",
+            parse_mode=ParseMode.HTML, reply_markup=main_menu(resident))
+        return
     cyc = rotation.cycle_start(today)
     task = await ensure_cycle_assignment(resident["telegram_id"], cyc)
     a = await db.get_assignment(resident["telegram_id"], cyc)
-    done = bool(a and a["status"] == "reported")
+    done = bool(a and a["status"] in ("reported", "approved"))
     cats = await db.get_extra_categories(resident["telegram_id"], today)
     cyc_str = f"{fmt_short(cyc)} – {fmt_short(rotation.cycle_end(today))}"
     await update.message.reply_text(
@@ -427,8 +435,8 @@ async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             a = await db.get_assignment(uid, cyc)
             if a:
                 await db.set_assignment_status(a["id"], "assigned")
-            # Sikl tugagan bo'lsa darhol jarima
-            if today_local() > rotation.cycle_end(rdate) and not await db.has_fine(uid, cyc, "cleaning"):
+            # Muddat (sikl boshi + 1 kun) o'tgan bo'lsa darhol jarima
+            if today_local() > cyc and not await db.has_fine(uid, cyc, "cleaning"):
                 await db.add_fine(uid, a["id"] if a else None, FINE_AMOUNT,
                                   "Tozalik vazifasi tasdiqlanmadi", cyc, "cleaning")
         await query.answer("Rad etildi")
@@ -480,14 +488,74 @@ async def show_residents_today(update, context) -> None:
         if "shower_after" in cats:
             parts.append("🚿✅")
         lines.append(f"<b>{r['name']}</b>: " + " · ".join(parts))
+    lines.append("\n👤 Batafsil kartochka uchun a'zoni tanlang:")
+    # A'zo kartochka tugmalari (2 tadan qatorga)
+    member_rows = []
+    row = []
+    for r in members:
+        row.append(InlineKeyboardButton(f"👤 {r['name']}", callback_data=f"memb:{r['telegram_id']}"))
+        if len(row) == 2:
+            member_rows.append(row); row = []
+    if row:
+        member_rows.append(row)
+    member_rows += [
+        [InlineKeyboardButton("📋 Vazifalar taqsimoti", callback_data="restasks")],
+        [InlineKeyboardButton("💸 Jarimalar (sabablari)", callback_data="resfines")],
+        [InlineKeyboardButton("📅 So'nggi 7 kun", callback_data="res7")],
+    ]
     await update.message.reply_text(
         "\n".join(lines), parse_mode=ParseMode.HTML,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 Vazifalar taqsimoti", callback_data="restasks")],
-            [InlineKeyboardButton("💸 Jarimalar (sabablari)", callback_data="resfines")],
-            [InlineKeyboardButton("📅 So'nggi 7 kun", callback_data="res7")],
-        ]),
+        reply_markup=InlineKeyboardMarkup(member_rows),
     )
+
+
+async def show_member_card(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    uid = int(query.data.split(":")[1])
+    r = await db.get_resident(uid)
+    if not r:
+        await query.message.reply_text("A'zo topilmadi.")
+        return
+    today = today_local()
+    lines = [f"👤 <b>{r['name']}</b>", f"📱 {r['phone']}"]
+    if is_away_on(r, today):
+        lines.append(f"✈️ Viloyatda ({fmt_short(r['away_until'])} gacha)")
+    # Joriy vazifa
+    if not rotation.before_start(today):
+        cyc = rotation.cycle_start(today)
+        a = await db.get_assignment(uid, cyc)
+        if a:
+            st = {"assigned": "❌ yo'q", "reported": "⏳ tasdiq kutilmoqda",
+                  "approved": "✅ tasdiqlangan", "missed": "❌ bajarilmadi"}.get(a["status"], a["status"])
+            lines.append(f"🧹 Vazifa: <b>{a['areas']}</b> — {st}")
+    # Jarimalar
+    fines = await db.get_user_fine_details(uid)
+    if fines:
+        tot = sum(f["amount"] for f in fines)
+        lines.append(f"💸 Jarima: {len(fines)} ta — {fmt_sum(tot)} so'm")
+    # So'nggi 7 kun, sana bo'yicha
+    start = today - dt.timedelta(days=6)
+    rows = await db.get_extra_reports_between(uid, start, today)
+    by_date: dict = {}
+    for x in rows:
+        by_date.setdefault(x["report_date"], []).append(x["category"])
+    lines.append("\n📅 <b>So'nggi 7 kun:</b>")
+    if not by_date and not (not rotation.before_start(today)):
+        lines.append("— hali atchot yo'q")
+    if by_date:
+        for d in sorted(by_date, reverse=True):
+            labels = [texts.CATEGORIES.get(c, c) for c in by_date[d]]
+            lines.append(f"• {fmt_short(d)}: " + ", ".join(labels))
+    else:
+        lines.append("— atchot yo'q")
+    kb = None
+    if is_admin(query.from_user.id):
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("💸 Jarima yozish", callback_data=f"af:{uid}"),
+            InlineKeyboardButton("🗑 Chiqarib tashlash", callback_data=f"rem:{uid}"),
+        ]])
+    await query.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=kb)
 
 
 async def show_task_distribution(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -658,9 +726,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if is_admin(update.effective_user.id):
         base += (
             "\n👑 <b>Admin:</b>\n"
+            "/admin — admin panel (jarima, vazifa taqsimoti, a'zo chiqarish)\n"
             "/azolar · /arizalar · /jarimalar\n"
-            "/jarima_ber &lt;id&gt; &lt;summa&gt; &lt;sabab&gt;\n"
-            "/jarima_ochir &lt;id&gt;\n"
+            "/jarima_ber &lt;id&gt; &lt;summa&gt; &lt;sabab&gt; · /jarima_ochir &lt;id&gt;\n"
             "/guruh — shu guruhni atchotlar uchun ulash\n"
         )
     await update.message.reply_text(base, parse_mode=ParseMode.HTML)
@@ -775,6 +843,7 @@ async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton(texts.AP_TASKS, callback_data="ap:tasks")],
         [InlineKeyboardButton(texts.AP_FINES, callback_data="ap:fines")],
         [InlineKeyboardButton(texts.AP_PENDING, callback_data="ap:pending")],
+        [InlineKeyboardButton(texts.AP_REMOVE, callback_data="ap:remove")],
     ])
     await update.message.reply_text(texts.ADMIN_PANEL_TITLE, parse_mode=ParseMode.HTML,
                                     reply_markup=kb)
@@ -803,6 +872,16 @@ async def on_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await show_all_fines(update, context)
     elif what == "pending":
         await cmd_arizalar_from(query, context)
+    elif what == "remove":
+        residents = await db.get_active_residents()
+        members = [r for r in residents if not is_admin(r["telegram_id"])]
+        if not members:
+            await query.message.reply_text("A'zolar yo'q.")
+            return
+        rows = [[InlineKeyboardButton(f"🗑 {r['name']}", callback_data=f"rem:{r['telegram_id']}")]
+                for r in members]
+        await query.message.reply_text("Kimni chiqaramiz? 👇",
+                                       reply_markup=InlineKeyboardMarkup(rows))
 
 
 async def cmd_arizalar_from(query, context) -> None:
@@ -864,6 +943,49 @@ async def on_admin_fine_reason(update: Update, context: ContextTypes.DEFAULT_TYP
         pass
 
 
+async def on_remove_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    await query.answer()
+    uid = query.data.split(":")[1]
+    target = await db.get_resident(int(uid))
+    if not target:
+        await query.message.reply_text("A'zo topilmadi.")
+        return
+    await query.message.reply_text(
+        f"🗑 <b>{target['name']}</b> ni kvartiradan chiqaramizmi? "
+        "Unga endi vazifa berilmaydi.",
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup([[
+            InlineKeyboardButton("✅ Ha, chiqarish", callback_data=f"remy:{uid}"),
+            InlineKeyboardButton("❌ Yo'q", callback_data="remn"),
+        ]]))
+
+
+async def on_remove_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    if query.data == "remn":
+        await query.answer()
+        await query.edit_message_text("Bekor qilindi.")
+        return
+    uid = int(query.data.split(":")[1])
+    target = await db.get_resident(uid)
+    await db.set_resident_status(uid, "removed")
+    await db.delete_future_assignments(uid, rotation.cycle_start(today_local()))
+    await query.answer("Chiqarildi")
+    name = target["name"] if target else str(uid)
+    await query.edit_message_text(f"🗑 <b>{name}</b> kvartiradan chiqarildi.", parse_mode=ParseMode.HTML)
+    try:
+        await context.bot.send_message(uid, "ℹ️ Siz kvartira navbatchiligidan chiqarildingiz.")
+    except Exception:
+        pass
+
+
 async def cmd_eslat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_admin(update.effective_user.id):
         return
@@ -875,10 +997,10 @@ async def cmd_eslat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Ertalab: yangi sikl boshlansa vazifa tarqatish + qaytish so'rovlari."""
     today = today_local()
-    if rotation.is_cycle_start(today):
+    if not rotation.before_start(today) and rotation.is_cycle_start(today):
         ids = await available_ids(today)
         mapping = rotation.assign_cycle(ids, rotation.cycle_index(today))
-        cyc_str = f"{fmt_short(today)} – {fmt_short(rotation.cycle_end(today))}"
+        deadline = today + dt.timedelta(days=1)
         for uid, task in mapping.items():
             if not task:
                 continue
@@ -886,9 +1008,10 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
             try:
                 await context.bot.send_message(
                     uid,
-                    f"🆕 <b>Yangi navbat ({cyc_str})</b>\n\n"
+                    f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
                     f"🧹 Vazifangiz: <b>{task}</b>\n"
-                    f"Shu {CYCLE_DAYS} kun ichida tozalab, 📤 orqali video yuboring.",
+                    f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n"
+                    "Tozalab, 📤 orqali video yuboring. Yubormasangiz jarima yoziladi.",
                     parse_mode=ParseMode.HTML)
             except Exception as e:
                 logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
@@ -906,11 +1029,14 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Kechqurun: sikl oxirgi kuni tozalik vazifasini eslatish."""
+    """Kechqurun: vazifa berilgan kuni hisobot bermaganlarni eslatish.
+
+    Muddat ertasi kun 05:00 bo'lgani uchun vazifa berilgan kuni kechqurun eslatamiz.
+    """
     today = today_local()
-    if today != rotation.cycle_end(today):
+    if rotation.before_start(today) or not rotation.is_cycle_start(today):
         return
-    cyc = rotation.cycle_start(today)
+    cyc = today
     for r in await db.get_available_residents(today):
         uid = r["telegram_id"]
         if is_admin(uid):
@@ -920,7 +1046,7 @@ async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
             try:
                 await context.bot.send_message(
                     uid,
-                    f"⏰ <b>Eslatma:</b> bugun sikl oxirgi kuni!\n"
+                    f"⏰ <b>Eslatma:</b> ertaga 05:00 gacha hisobot kerak!\n"
                     f"🧹 Tozalik vazifangiz: <b>{a['areas']}</b> — hali yuborilmagan. "
                     "📤 orqali video yuboring.",
                     parse_mode=ParseMode.HTML)
@@ -929,31 +1055,33 @@ async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """05:00: sikl tugagan bo'lsa tozalik vazifasi jarimalari.
+    """05:00: vazifa berilgan kunning ertasi — hisobot bermaganlarga tozalik jarimasi.
 
-    Eshik/oshxona/dush uchun avtomatik jarima yo'q — ularni admin qo'lda yozadi.
+    Vazifa sikl boshida beriladi, hisobot ertasi kun 05:00 gacha kerak.
+    Eshik/oshxona/dush uchun avtomatik jarima yo'q — admin qo'lda yozadi.
     """
     today = today_local()
+    yesterday = today - dt.timedelta(days=1)
 
-    # Tozalik vazifasi — sikl tugaganda
-    if rotation.is_cycle_start(today):
-        prev = today - dt.timedelta(days=CYCLE_DAYS)
-        for a in await db.get_cycle_assignments(prev):
-            if a["status"] != "assigned":
-                continue
-            await db.set_assignment_status(a["id"], "missed")
-            uid = a["telegram_id"]
-            if await db.has_fine(uid, prev, "cleaning"):
-                continue
-            await db.add_fine(uid, a["id"], FINE_AMOUNT,
-                              f"Tozalik vazifasi bajarilmadi ({a['areas']})", prev, "cleaning")
-            try:
-                await context.bot.send_message(
-                    uid, texts.fine_summary_msg(
-                        [(f"Tozalik: {a['areas']}", FINE_AMOUNT)], FINE_AMOUNT),
-                    parse_mode=ParseMode.HTML)
-            except Exception:
-                pass
+    # Kecha vazifa berilgan bo'lsa (sikl boshi), bugun 05:00 da tekshiramiz
+    if rotation.before_start(yesterday) or not rotation.is_cycle_start(yesterday):
+        return
+    for a in await db.get_cycle_assignments(yesterday):
+        if a["status"] not in ("assigned",):
+            continue
+        await db.set_assignment_status(a["id"], "missed")
+        uid = a["telegram_id"]
+        if await db.has_fine(uid, yesterday, "cleaning"):
+            continue
+        await db.add_fine(uid, a["id"], FINE_AMOUNT,
+                          f"Tozalik vazifasi bajarilmadi ({a['areas']})", yesterday, "cleaning")
+        try:
+            await context.bot.send_message(
+                uid, texts.fine_summary_msg(
+                    [(f"Tozalik: {a['areas']}", FINE_AMOUNT)], FINE_AMOUNT),
+                parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
 
 
 # =================== Ishga tushirish ===================
@@ -1042,9 +1170,12 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(show_residents_week, pattern=r"^res7$"))
     app.add_handler(CallbackQueryHandler(show_task_distribution, pattern=r"^restasks$"))
     app.add_handler(CallbackQueryHandler(show_all_fines, pattern=r"^resfines$"))
+    app.add_handler(CallbackQueryHandler(show_member_card, pattern=r"^memb:"))
     app.add_handler(CallbackQueryHandler(on_admin_panel, pattern=r"^ap:"))
     app.add_handler(CallbackQueryHandler(on_admin_fine_reason, pattern=r"^afr:"))
     app.add_handler(CallbackQueryHandler(on_admin_fine_member, pattern=r"^af:"))
+    app.add_handler(CallbackQueryHandler(on_remove_confirm, pattern=r"^rem(y:|n$)"))
+    app.add_handler(CallbackQueryHandler(on_remove_member, pattern=r"^rem:"))
 
     app.add_handler(CommandHandler("id", cmd_id))
     app.add_handler(CommandHandler("help", cmd_help))

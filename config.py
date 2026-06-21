@@ -33,15 +33,21 @@ DATABASE_URL: str = _get("DATABASE_URL", required=True)
 TZ_NAME: str = _get("TIMEZONE", "Asia/Tashkent")
 TZ = ZoneInfo(TZ_NAME)
 
+import datetime as _dt
+
 # Yangi sikl e'lon qilinadigan soat
-ANNOUNCE_HOUR: int = int(_get("ANNOUNCE_HOUR", "9"))
-# Eslatma soati (ertalab)
+ANNOUNCE_HOUR: int = int(_get("ANNOUNCE_HOUR", "5"))
+# Eslatma soati (kechqurun)
 REMIND_HOUR: int = int(_get("REMIND_HOUR", "21"))
 # Muddat (jarima yoziladigan) soati
 DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "5"))
 
 # Tozalik navbati necha kunda almashadi
 CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "3"))
+
+# Tozalik vazifalari shu sanadan boshlab beriladi (23-iyun 2026)
+_ts = _get("TASKS_START_DATE", "2026-06-23")
+TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
 # --- Jarima (so'm) ---
 FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "100000"))  # tozalik vazifasi (to'liq)

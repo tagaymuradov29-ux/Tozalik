@@ -9,10 +9,15 @@ from __future__ import annotations
 
 import datetime as dt
 
-from config import CYCLE_DAYS
+from config import CYCLE_DAYS, TASKS_START_DATE
 from texts import TASKS
 
-_EPOCH = dt.date(2024, 1, 1)
+# Sikllar tozalik boshlanish sanasidan hisoblanadi (23-iyun = 1-sikl boshi)
+_EPOCH = TASKS_START_DATE
+
+
+def before_start(d: dt.date) -> bool:
+    return d < TASKS_START_DATE
 
 
 def day_number(d: dt.date) -> int:

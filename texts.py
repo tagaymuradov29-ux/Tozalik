@@ -202,6 +202,7 @@ AP_FINE = "💸 Jarima yozish"
 AP_TASKS = "📋 Vazifalar taqsimoti"
 AP_FINES = "💸 Barcha jarimalar"
 AP_PENDING = "🆕 Arizalar"
+AP_REMOVE = "🗑 A'zoni chiqarish"
 
 # Qo'lda jarima sabablari (100 000 so'm)
 FINE_REASONS = {
