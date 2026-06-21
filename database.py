@@ -62,6 +62,7 @@ async def _create_tables() -> None:
                 category      TEXT NOT NULL,
                 file_id       TEXT,
                 file_type     TEXT,
+                status        TEXT NOT NULL DEFAULT 'pending',
                 created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
                 UNIQUE (telegram_id, report_date, category)
             );
@@ -87,6 +88,7 @@ async def _create_tables() -> None:
             -- Migratsiyalar (eski bazalar uchun)
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS away_until DATE;
             ALTER TABLE fines ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'cleaning';
+            ALTER TABLE extra_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
             """
         )
 
@@ -233,23 +235,38 @@ async def delete_future_assignments(telegram_id: int, from_date: dt.date) -> Non
 
 # ---------------- Extra reports (har kunlik + activity) ----------------
 async def add_extra_report(telegram_id: int, report_date: dt.date, category: str,
-                           file_id: str | None, file_type: str | None) -> None:
+                           file_id: str | None, file_type: str | None) -> int:
     async with _pool.acquire() as con:
-        await con.execute(
+        row = await con.fetchrow(
             """
-            INSERT INTO extra_reports (telegram_id, report_date, category, file_id, file_type)
-            VALUES ($1,$2,$3,$4,$5)
+            INSERT INTO extra_reports (telegram_id, report_date, category, file_id, file_type, status)
+            VALUES ($1,$2,$3,$4,$5,'pending')
             ON CONFLICT (telegram_id, report_date, category) DO UPDATE
-              SET file_id=EXCLUDED.file_id, file_type=EXCLUDED.file_type, created_at=now();
+              SET file_id=EXCLUDED.file_id, file_type=EXCLUDED.file_type,
+                  status='pending', created_at=now()
+            RETURNING id;
             """,
             telegram_id, report_date, category, file_id, file_type,
         )
+        return row["id"]
+
+
+async def get_extra_report(report_id: int) -> asyncpg.Record | None:
+    async with _pool.acquire() as con:
+        return await con.fetchrow("SELECT * FROM extra_reports WHERE id=$1", report_id)
+
+
+async def set_extra_report_status(report_id: int, status: str) -> None:
+    async with _pool.acquire() as con:
+        await con.execute("UPDATE extra_reports SET status=$2 WHERE id=$1", report_id, status)
 
 
 async def get_extra_categories(telegram_id: int, report_date: dt.date) -> set[str]:
+    """Rad etilmagan (pending/approved) hisobot kategoriyalari."""
     async with _pool.acquire() as con:
         rows = await con.fetch(
-            "SELECT category FROM extra_reports WHERE telegram_id=$1 AND report_date=$2",
+            "SELECT category FROM extra_reports WHERE telegram_id=$1 AND report_date=$2 "
+            "AND status <> 'rejected'",
             telegram_id, report_date,
         )
         return {r["category"] for r in rows}
@@ -260,7 +277,7 @@ async def get_extra_reports_between(telegram_id: int, start: dt.date,
     async with _pool.acquire() as con:
         return await con.fetch(
             "SELECT report_date, category FROM extra_reports "
-            "WHERE telegram_id=$1 AND report_date BETWEEN $2 AND $3 "
+            "WHERE telegram_id=$1 AND report_date BETWEEN $2 AND $3 AND status <> 'rejected' "
             "ORDER BY report_date DESC, category",
             telegram_id, start, end,
         )
@@ -310,6 +327,19 @@ async def get_all_active_fines() -> list[asyncpg.Record]:
             GROUP BY f.telegram_id, r.name ORDER BY total DESC;
             """
         )
+
+
+async def clear_fine_by(telegram_id: int, fine_date: dt.date, category: str) -> int:
+    async with _pool.acquire() as con:
+        res = await con.execute(
+            "UPDATE fines SET status='cleared', cleared_at=now() "
+            "WHERE telegram_id=$1 AND fine_date=$2 AND category=$3 AND status='active'",
+            telegram_id, fine_date, category,
+        )
+        try:
+            return int(res.split()[-1])
+        except Exception:
+            return 0
 
 
 async def clear_user_active_fines(telegram_id: int) -> int:

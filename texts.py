@@ -12,6 +12,7 @@ TASKS = [
 # Hisobot kategoriyalari (activity ko'rinishida ishlatiladi)
 CATEGORIES = {
     "task": "🧹 Tozalik vazifasi",
+    "shower_after": "🚿 Cho'milib tozaladi",
     "cook_start": "🍳 Ovqat pishirdi",
     "cook_dishes": "🍽 Idishlarni yuvdi",
     "door_out": "🚪 Uydan chiqdi",
@@ -22,7 +23,7 @@ CATEGORIES = {
 BTN_MY_TASK = "📋 Mening vazifam"
 BTN_REPORT = "📤 Hisobot yuborish"
 BTN_RESIDENTS = "🏠 Kvartiradagilar"
-BTN_MY_FINES = "💸 Jarimalarim"
+BTN_RULES_FINES = "📜 Qoidalar va jarimalar"
 BTN_AWAY = "✈️ Viloyatga ketdim"
 BTN_BACK = "🏠 Uyga keldim"
 BTN_HELP = "❓ Yordam"
@@ -129,18 +130,47 @@ REPORT_MENU_TITLE = "📤 Qaysi hisobotni yuborasiz? Tanlang 👇"
 
 # Report inline tugmalari
 RB_TASK = "🧹 Tozalik vazifamni bajardim"
+RB_SHOWER = "🚿 Cho'milib, o'zimdan keyin tozaladim"
 RB_COOK_START = "🍳 Ovqat pishirdim"
 RB_COOK_DISHES = "🍽 Idishlarni yuvdim"
 RB_DOOR_OUT = "🚪 Uydan chiqdim"
 RB_DOOR_IN = "🔑 Uyga keldim"
 
+# Tugma -> kategoriya -> ko'rinadigan nom
+RB_LABELS = {
+    "task": RB_TASK, "shower_after": RB_SHOWER, "cook_start": RB_COOK_START,
+    "cook_dishes": RB_COOK_DISHES, "door_out": RB_DOOR_OUT, "door_in": RB_DOOR_IN,
+}
+
 SEND_VIDEO_NOW = "📹 Endi shu hisobot uchun <b>video</b> yuboring 👇"
 
-NO_TASK_TO_REPORT = "ℹ️ Bu siklda sizga tozalik vazifasi berilmagan."
+NO_TASK_TO_REPORT = "ℹ️ Bu siklda sizga tozalik vazifasi berilmagan, lekin hisobot saqlandi."
 
 
 def report_saved(label: str) -> str:
-    return f"✅ Qabul qilindi: <b>{label}</b>. Rahmat!"
+    return (
+        f"✅ Qabul qilindi: <b>{label}</b>.\n"
+        "📤 Admin tasdig'iga yuborildi. Tasdiqlangach jarima yozilmaydi."
+    )
+
+
+REPORT_APPROVED = "✅ <b>Hisobotingiz tasdiqlandi!</b> Rahmat. 👏"
+
+
+def report_rejected(label: str) -> str:
+    return (
+        f"❌ <b>Hisobotingiz rad etildi:</b> {label}\n"
+        "Iltimos, qayta bajarib, yangi video yuboring. Aks holda jarima yoziladi."
+    )
+
+
+def rules_and_fines(rules: str, cnt: int, total: int) -> str:
+    if cnt == 0:
+        f = "\n\n💸 <b>Jarimalaringiz:</b> faol jarima yo'q. ✅"
+    else:
+        f = (f"\n\n💸 <b>Jarimalaringiz:</b> {cnt} ta — "
+             f"<b>{total:,} so'm</b>".replace(",", " "))
+    return rules + f
 
 
 COOK_NEXT_HINT = "Endi idishlarni yuvgach, quyidagini bosing 👇"

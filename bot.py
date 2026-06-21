@@ -82,7 +82,7 @@ def main_menu(resident) -> ReplyKeyboardMarkup:
     away = resident and resident["away_until"] and today_local() < resident["away_until"]
     rows = [
         [texts.BTN_MY_TASK, texts.BTN_REPORT],
-        [texts.BTN_RESIDENTS, texts.BTN_MY_FINES],
+        [texts.BTN_RESIDENTS, texts.BTN_RULES_FINES],
         [texts.BTN_BACK if away else texts.BTN_AWAY, texts.BTN_HELP],
     ]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
@@ -256,8 +256,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await show_report_menu(update, context)
     elif text == texts.BTN_RESIDENTS:
         await show_residents_today(update, context)
-    elif text == texts.BTN_MY_FINES:
-        await show_my_fines(update, context)
+    elif text == texts.BTN_RULES_FINES:
+        await show_rules_fines(update, context)
     elif text == texts.BTN_AWAY:
         await start_away(update, context, resident)
     elif text == texts.BTN_BACK:
@@ -286,6 +286,7 @@ async def show_my_task(update, context, resident) -> None:
 def report_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(texts.RB_TASK, callback_data="rep:task")],
+        [InlineKeyboardButton(texts.RB_SHOWER, callback_data="rep:shower_after")],
         [InlineKeyboardButton(texts.RB_COOK_START, callback_data="rep:cook_start")],
         [InlineKeyboardButton(texts.RB_COOK_DISHES, callback_data="rep:cook_dishes")],
         [InlineKeyboardButton(texts.RB_DOOR_OUT, callback_data="rep:door_out")],
@@ -302,11 +303,7 @@ async def on_report_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await query.answer()
     cat = query.data.split(":")[1]
     context.user_data["pending_category"] = cat
-    label = {
-        "task": texts.RB_TASK, "cook_start": texts.RB_COOK_START,
-        "cook_dishes": texts.RB_COOK_DISHES, "door_out": texts.RB_DOOR_OUT,
-        "door_in": texts.RB_DOOR_IN,
-    }[cat]
+    label = texts.RB_LABELS[cat]
     await query.edit_message_text(f"{label}\n\n{texts.SEND_VIDEO_NOW}", parse_mode=ParseMode.HTML)
 
 
@@ -332,27 +329,24 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     today = today_local()
-    label = {
-        "task": texts.RB_TASK, "cook_start": texts.RB_COOK_START,
-        "cook_dishes": texts.RB_COOK_DISHES, "door_out": texts.RB_DOOR_OUT,
-        "door_in": texts.RB_DOOR_IN,
-    }[cat]
+    label = texts.RB_LABELS[cat]
 
+    no_task = False
     if cat == "task":
         cyc = rotation.cycle_start(today)
         a = await db.get_assignment(user.id, cyc)
         if a:
             await db.set_assignment_status(a["id"], "reported")
-        await db.add_extra_report(user.id, today, "task", file_id, file_type)
-        if not a:
-            await update.message.reply_text(texts.NO_TASK_TO_REPORT)
-    else:
-        await db.add_extra_report(user.id, today, cat, file_id, file_type)
+        else:
+            no_task = True
+    rid = await db.add_extra_report(user.id, today, cat, file_id, file_type)
+    if no_task:
+        await update.message.reply_text(texts.NO_TASK_TO_REPORT)
 
     await update.message.reply_text(texts.report_saved(label), parse_mode=ParseMode.HTML)
 
-    caption = f"📹 <b>{resident['name']}</b>\n{label}\n🗓 {fmt_date(today)}"
-    await broadcast_report(context, file_id, file_type, caption)
+    caption = f"📹 <b>{resident['name']}</b>\n{label}\n🗓 {fmt_date(today)}\n\nTasdiqlaysizmi?"
+    await broadcast_report(context, file_id, file_type, caption, rid)
 
     # Ichma-ich keyingi qadam
     if cat == "cook_start":
@@ -369,25 +363,103 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
 
-async def broadcast_report(context, file_id, file_type, caption) -> None:
-    """Videoni adminlarga va (sozlangan bo'lsa) guruhga yuboradi."""
-    targets = set(ADMIN_IDS)
+async def broadcast_report(context, file_id, file_type, caption, report_id) -> None:
+    """Adminlarga (tasdiqlash tugmalari bilan) va guruhga (tugmasiz) yuboradi."""
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"rok:{report_id}"),
+        InlineKeyboardButton("❌ Rad etish", callback_data=f"rno:{report_id}"),
+    ]])
+    for admin_id in ADMIN_IDS:
+        try:
+            if file_type == "video_note":
+                await context.bot.send_video_note(admin_id, file_id)
+                await context.bot.send_message(admin_id, caption, parse_mode=ParseMode.HTML,
+                                               reply_markup=kb)
+            else:
+                await context.bot.send_video(admin_id, file_id, caption=caption,
+                                             parse_mode=ParseMode.HTML, reply_markup=kb)
+        except Exception as e:
+            logger.warning("Adminga hisobot yuborilmadi %s: %s", admin_id, e)
+    # Guruhga (tugmasiz)
     gid = await db.get_setting("group_chat_id")
     if gid:
         try:
-            targets.add(int(gid))
-        except ValueError:
-            pass
-    for chat_id in targets:
-        try:
+            gid_int = int(gid)
+            gcap = caption.replace("\n\nTasdiqlaysizmi?", "")
             if file_type == "video_note":
-                await context.bot.send_video_note(chat_id, file_id)
-                await context.bot.send_message(chat_id, caption, parse_mode=ParseMode.HTML)
+                await context.bot.send_video_note(gid_int, file_id)
+                await context.bot.send_message(gid_int, gcap, parse_mode=ParseMode.HTML)
             else:
-                await context.bot.send_video(chat_id, file_id, caption=caption,
-                                             parse_mode=ParseMode.HTML)
+                await context.bot.send_video(gid_int, file_id, caption=gcap, parse_mode=ParseMode.HTML)
         except Exception as e:
-            logger.warning("Hisobot yuborilmadi %s: %s", chat_id, e)
+            logger.warning("Guruhga hisobot yuborilmadi: %s", e)
+
+
+async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    action, rid_str = query.data.split(":")
+    report = await db.get_extra_report(int(rid_str))
+    if not report:
+        await query.answer("Hisobot topilmadi.", show_alert=True)
+        return
+    uid = report["telegram_id"]
+    cat = report["category"]
+    rdate = report["report_date"]
+    label = texts.RB_LABELS.get(cat, cat)
+
+    if action == "rok":
+        await db.set_extra_report_status(report["id"], "approved")
+        if cat == "task":
+            cyc = rotation.cycle_start(rdate)
+            a = await db.get_assignment(uid, cyc)
+            if a:
+                await db.set_assignment_status(a["id"], "approved")
+            await db.clear_fine_by(uid, cyc, "cleaning")
+        elif cat in ("door_out", "door_in"):
+            await db.clear_fine_by(uid, rdate, "door")
+        elif cat in ("cook_start", "cook_dishes"):
+            await db.clear_fine_by(uid, rdate, "cooking")
+        await query.answer("Tasdiqlandi ✅")
+        await _mark(query, "✅ <b>Tasdiqlandi</b>")
+        try:
+            await context.bot.send_message(uid, texts.REPORT_APPROVED, parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+    else:  # rno
+        await db.set_extra_report_status(report["id"], "rejected")
+        if cat == "task":
+            cyc = rotation.cycle_start(rdate)
+            a = await db.get_assignment(uid, cyc)
+            if a:
+                await db.set_assignment_status(a["id"], "assigned")
+            # Sikl tugagan bo'lsa darhol jarima
+            if today_local() > rotation.cycle_end(rdate) and not await db.has_fine(uid, cyc, "cleaning"):
+                await db.add_fine(uid, a["id"] if a else None, FINE_AMOUNT,
+                                  "Tozalik vazifasi tasdiqlanmadi", cyc, "cleaning")
+        await query.answer("Rad etildi")
+        await _mark(query, "❌ <b>Rad etildi</b>")
+        try:
+            await context.bot.send_message(uid, texts.report_rejected(label), parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+
+
+async def _mark(query, suffix: str) -> None:
+    try:
+        if query.message.caption is not None:
+            await query.edit_message_caption(
+                caption=query.message.caption_html + "\n\n" + suffix, parse_mode=ParseMode.HTML)
+        else:
+            await query.edit_message_text(
+                query.message.text_html + "\n\n" + suffix, parse_mode=ParseMode.HTML)
+    except Exception:
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+        except Exception:
+            pass
 
 
 # =================== Kvartiradagilar ===================
@@ -443,16 +515,11 @@ async def show_residents_week(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 # =================== Jarimalar ===================
-async def show_my_fines(update, context) -> None:
+async def show_rules_fines(update, context) -> None:
     cnt, total = await db.get_user_fines(update.effective_user.id)
-    if cnt == 0:
-        await update.message.reply_text("✅ Sizda faol jarima yo'q. Ofarin! 👏")
-    else:
-        await update.message.reply_text(
-            f"💸 <b>Faol jarimalaringiz</b>\nSoni: {cnt} ta\n"
-            f"Jami: <b>{fmt_sum(total)} so'm</b>",
-            parse_mode=ParseMode.HTML,
-        )
+    await update.message.reply_text(
+        texts.rules_and_fines(texts.rules_text(), cnt, total), parse_mode=ParseMode.HTML
+    )
 
 
 # =================== Viloyat ===================
@@ -527,9 +594,10 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🏠 <b>Uy Tartibi boti</b>\n\n"
         "Pastdagi tugmalardan foydalaning:\n"
         "📋 Mening vazifam · 📤 Hisobot yuborish\n"
-        "🏠 Kvartiradagilar · 💸 Jarimalarim\n"
+        "🏠 Kvartiradagilar · 📜 Qoidalar va jarimalar\n"
         "✈️ Viloyatga ketdim · ❓ Yordam\n\n"
-        "Hisobot: 📤 tugmasini bosib, turini tanlang, keyin video yuboring.\n"
+        "Hisobot: 📤 bosib, turini tanlang, keyin video yuboring.\n"
+        "Har bir video admin tasdig'iga boradi — tasdiqlansa jarima yo'q.\n"
     )
     if is_admin(update.effective_user.id):
         base += (
@@ -843,6 +911,7 @@ def main() -> None:
     app.add_handler(conv)
 
     app.add_handler(CallbackQueryHandler(on_user_review, pattern=r"^u(ok|no):"))
+    app.add_handler(CallbackQueryHandler(on_report_review, pattern=r"^r(ok|no):"))
     app.add_handler(CallbackQueryHandler(on_report_button, pattern=r"^rep:"))
     app.add_handler(CallbackQueryHandler(on_return_buttons, pattern=r"^back:"))
     app.add_handler(CallbackQueryHandler(show_residents_week, pattern=r"^res7$"))
