@@ -329,6 +329,38 @@ async def get_all_active_fines() -> list[asyncpg.Record]:
         )
 
 
+async def get_user_fine_details(telegram_id: int) -> list[asyncpg.Record]:
+    async with _pool.acquire() as con:
+        return await con.fetch(
+            "SELECT reason, amount, fine_date FROM fines "
+            "WHERE telegram_id=$1 AND status='active' ORDER BY fine_date DESC",
+            telegram_id,
+        )
+
+
+async def get_all_fine_details() -> list[asyncpg.Record]:
+    async with _pool.acquire() as con:
+        return await con.fetch(
+            """
+            SELECT r.name, f.reason, f.amount, f.fine_date
+            FROM fines f JOIN residents r ON r.telegram_id=f.telegram_id
+            WHERE f.status='active'
+            ORDER BY r.name, f.fine_date DESC;
+            """
+        )
+
+
+async def clear_all_fines() -> int:
+    async with _pool.acquire() as con:
+        res = await con.execute(
+            "UPDATE fines SET status='cleared', cleared_at=now() WHERE status='active'"
+        )
+        try:
+            return int(res.split()[-1])
+        except Exception:
+            return 0
+
+
 async def clear_fine_by(telegram_id: int, fine_date: dt.date, category: str) -> int:
     async with _pool.acquire() as con:
         res = await con.execute(

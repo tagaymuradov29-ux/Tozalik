@@ -12,9 +12,8 @@ TASKS = [
 # Hisobot kategoriyalari (activity ko'rinishida ishlatiladi)
 CATEGORIES = {
     "task": "🧹 Tozalik vazifasi",
+    "kitchen_used": "🍳 Oshxonadan foydalandi va tozaladi",
     "shower_after": "🚿 Cho'milib tozaladi",
-    "cook_start": "🍳 Ovqat pishirdi",
-    "cook_dishes": "🍽 Idishlarni yuvdi",
     "door_out": "🚪 Uydan chiqdi",
     "door_in": "🔑 Uyga keldi",
 }
@@ -56,12 +55,13 @@ def rules_text() -> str:
         "🧹 <b>1. Tozalik vazifasi</b>\n"
         f"Sizga biriktirilgan joyni {CYCLE_DAYS} kun ichida tozalab, video hisobot "
         "yuborasiz. Dush: hamma joy toza, sochlar qolmagan bo'lishi shart.\n\n"
-        "🚪 <b>2. Eshik (har kuni)</b>\n"
-        "Uydan chiqishda eshikni qulflagan video, uyga kelganda ham qulflagan video.\n"
-        "Ikkalasi yo'q — 100 000; bittasi yo'q — 80 000 so'm.\n\n"
-        "🍳 <b>3. Ovqat (qilsangiz)</b>\n"
-        "\"Ovqat pishirdim\" + \"Idishlarni yuvdim\" video. Hisobotsiz ovqat — "
-        "100 000; boshlab idish yuvilmasa — 80 000 so'm.\n\n"
+        "🚪 <b>2. Eshik</b>\n"
+        "Uydan chiqishda eshikni qulflagan video, uyga kelganda ham qulflagan video.\n\n"
+        "🍳 <b>3. Oshxona / 🚿 Dush (foydalansangiz)</b>\n"
+        "Oshxonadan foydalanib tozalagan video; dushdan keyin \"o'zimdan keyin "
+        "tozaladim\" video.\n\n"
+        "⚠️ Oshxona, dush yoki eshikdan foydalanib hisobot yubormaganni admin ko'rib "
+        "<b>100 000 so'm</b> jarima yozadi.\n\n"
         "✈️ <b>4. Viloyat</b>\n"
         "Viloyatga ketsangiz tugmani bosib, qaytish sanasini belgilang — o'sha "
         "kungacha vazifa berilmaydi, jarima yozilmaydi.\n"
@@ -121,7 +121,7 @@ def my_task_msg(cycle_str: str, task: str | None, done_task: bool,
     lines.append("\n🚪 <b>Bugungi eshik:</b>")
     lines.append(f"• Uydan chiqdim: {'✅' if door_out else '❌'}")
     lines.append(f"• Uyga keldim: {'✅' if door_in else '❌'}")
-    lines.append("\n🍳 Ovqat qilsangiz: \"pishirdim\" + \"idish yuvdim\" yuboring.")
+    lines.append("\n🍳 Oshxona/🚿 dushdan foydalansangiz — \"foydalandim va tozaladim\" video yuboring.")
     lines.append("\nHisobot yuborish uchun 📤 tugmasini bosing.")
     return "\n".join(lines)
 
@@ -130,16 +130,15 @@ REPORT_MENU_TITLE = "📤 Qaysi hisobotni yuborasiz? Tanlang 👇"
 
 # Report inline tugmalari
 RB_TASK = "🧹 Tozalik vazifamni bajardim"
+RB_KITCHEN = "🍳 Oshxonadan foydalandim va tozaladim"
 RB_SHOWER = "🚿 Cho'milib, o'zimdan keyin tozaladim"
-RB_COOK_START = "🍳 Ovqat pishirdim"
-RB_COOK_DISHES = "🍽 Idishlarni yuvdim"
 RB_DOOR_OUT = "🚪 Uydan chiqdim"
 RB_DOOR_IN = "🔑 Uyga keldim"
 
 # Tugma -> kategoriya -> ko'rinadigan nom
 RB_LABELS = {
-    "task": RB_TASK, "shower_after": RB_SHOWER, "cook_start": RB_COOK_START,
-    "cook_dishes": RB_COOK_DISHES, "door_out": RB_DOOR_OUT, "door_in": RB_DOOR_IN,
+    "task": RB_TASK, "kitchen_used": RB_KITCHEN, "shower_after": RB_SHOWER,
+    "door_out": RB_DOOR_OUT, "door_in": RB_DOOR_IN,
 }
 
 SEND_VIDEO_NOW = "📹 Endi shu hisobot uchun <b>video</b> yuboring 👇"
@@ -164,13 +163,65 @@ def report_rejected(label: str) -> str:
     )
 
 
-def rules_and_fines(rules: str, cnt: int, total: int) -> str:
-    if cnt == 0:
+def _sum(n: int) -> str:
+    return f"{n:,}".replace(",", " ")
+
+
+def rules_and_fines(rules: str, details: list, total: int) -> str:
+    """details: [(reason, amount, date_str), ...]"""
+    if not details:
         f = "\n\n💸 <b>Jarimalaringiz:</b> faol jarima yo'q. ✅"
     else:
-        f = (f"\n\n💸 <b>Jarimalaringiz:</b> {cnt} ta — "
-             f"<b>{total:,} so'm</b>".replace(",", " "))
+        lines = [f"\n\n💸 <b>Jarimalaringiz ({_sum(total)} so'm):</b>"]
+        for reason, amount, dstr in details:
+            lines.append(f"• {dstr} — {reason}: <b>{_sum(amount)} so'm</b>")
+        f = "\n".join(lines)
     return rules + f
+
+
+def all_fines_text(rows: list) -> str:
+    """rows: [(name, reason, amount, date_str), ...] — barcha faol jarimalar."""
+    if not rows:
+        return "✅ Hech kimda faol jarima yo'q."
+    lines = ["💸 <b>Faol jarimalar (sabablari bilan):</b>\n"]
+    cur = None
+    grand = 0
+    for name, reason, amount, dstr in rows:
+        grand += amount
+        if name != cur:
+            lines.append(f"\n<b>{name}:</b>")
+            cur = name
+        lines.append(f"• {dstr} — {reason}: {_sum(amount)} so'm")
+    lines.append(f"\n➖➖➖\nJami: <b>{_sum(grand)} so'm</b>")
+    return "\n".join(lines)
+
+
+# ---------- Admin panel ----------
+ADMIN_PANEL_TITLE = "👑 <b>Admin panel</b> — tanlang 👇"
+AP_FINE = "💸 Jarima yozish"
+AP_TASKS = "📋 Vazifalar taqsimoti"
+AP_FINES = "💸 Barcha jarimalar"
+AP_PENDING = "🆕 Arizalar"
+
+# Qo'lda jarima sabablari (100 000 so'm)
+FINE_REASONS = {
+    "oshxona": "Oshxonadan foydalanib hisobot bermadi",
+    "dush": "Dushdan foydalanib hisobot bermadi",
+    "eshik": "Eshik (kirish/chiqish) hisobotini bermadi",
+    "boshqa": "Boshqa (admin)",
+}
+
+AP_PICK_MEMBER = "Kimga jarima yozasiz? 👇"
+AP_PICK_REASON = "Sabab tanlang (100 000 so'm) 👇"
+AP_CUSTOM_ASK = "Sabab va summani yozing. Masalan: <code>Tartibsizlik 50000</code>\nFaqat sabab yozsangiz 100 000 so'm bo'ladi."
+
+
+def task_distribution(cycle_str: str, mapping: list) -> str:
+    """mapping: [(task, name_or_dash), ...]"""
+    lines = [f"📋 <b>Vazifalar taqsimoti ({cycle_str})</b>\n"]
+    for task, who in mapping:
+        lines.append(f"{task} → <b>{who}</b>")
+    return "\n".join(lines)
 
 
 COOK_NEXT_HINT = "Endi idishlarni yuvgach, quyidagini bosing 👇"
