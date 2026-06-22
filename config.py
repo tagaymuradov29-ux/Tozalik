@@ -49,6 +49,15 @@ CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "3"))
 _ts = _get("TASKS_START_DATE", "2026-06-23")
 TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
+# Boshlang'ich navbat tartibi (1-sikl, 23-iyun shu ketma-ketlikda):
+# Oshxona, Hojatxona+Koridor, Dush, Musor — shu tartibda.
+# Ismlar ro'yxatdagi ism bilan moslashtiriladi (qism bo'yicha).
+INITIAL_ORDER: list[str] = [
+    x.strip() for x in _get(
+        "INITIAL_ORDER", "Rustam, Shaxzod Asadjonov, Bunyod, Mirjon"
+    ).split(",") if x.strip()
+]
+
 # --- Jarima (so'm) ---
 FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "100000"))  # tozalik vazifasi (to'liq)
 # Eshik qulflash: ikkalasi (chiqish+kirish) bajarilmasa / bittasi bajarilmasa

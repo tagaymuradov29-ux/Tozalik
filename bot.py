@@ -33,12 +33,10 @@ from config import (
     ADMIN_IDS,
     ANNOUNCE_HOUR,
     BOT_TOKEN,
-    COOK_FINE_PARTIAL,
     CYCLE_DAYS,
     DEADLINE_HOUR,
-    DOOR_FINE_FULL,
-    DOOR_FINE_PARTIAL,
     FINE_AMOUNT,
+    INITIAL_ORDER,
     REMIND_HOUR,
     TZ,
     is_admin,
@@ -88,10 +86,22 @@ def main_menu(resident) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
+def _order_index(name: str) -> tuple:
+    """INITIAL_ORDER bo'yicha tartib kaliti (moslar oldinda, shu ketma-ketlikda)."""
+    nm = (name or "").lower()
+    for i, key in enumerate(INITIAL_ORDER):
+        k = key.lower()
+        if k in nm or all(w in nm for w in k.split()):
+            return (0, i, 0)
+    return (1, 0, 0)
+
+
 async def available_ids(on_date: dt.date) -> list[int]:
-    """Faol, viloyatda emas va admin bo'lmagan a'zolar."""
-    residents = await db.get_available_residents(on_date)
-    return [r["telegram_id"] for r in residents if not is_admin(r["telegram_id"])]
+    """Faol, viloyatda emas va admin bo'lmagan a'zolar — boshlang'ich tartibda."""
+    residents = [r for r in await db.get_available_residents(on_date)
+                 if not is_admin(r["telegram_id"])]
+    residents.sort(key=lambda r: _order_index(r["name"]) + (r["telegram_id"],))
+    return [r["telegram_id"] for r in residents]
 
 
 # =================== Ro'yxatdan o'tish ===================
