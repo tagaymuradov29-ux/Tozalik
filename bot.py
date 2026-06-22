@@ -377,6 +377,34 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
 
+def html_escape(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def mention(uid: int, name: str) -> str:
+    return f'<a href="tg://user?id={uid}">{html_escape(name)}</a>'
+
+
+async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by) -> None:
+    """Guruhga yangi taqsimotni har bir kishini belgilab e'lon qiladi."""
+    gid = await db.get_setting("group_chat_id")
+    if not gid:
+        return
+    lines = [
+        f"📋 <b>Yangi tozalik navbati</b> ({fmt_short(cycle_start)})\n",
+    ]
+    for task in texts.TASKS:
+        uid = task_to_uid.get(task)
+        who = mention(uid, name_by.get(uid, "—")) if uid else "—"
+        lines.append(f"{task} → {who}")
+    lines.append(f"\n⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.")
+    lines.append("Tozalab, botga 📤 orqali video yuboring.")
+    try:
+        await context.bot.send_message(int(gid), "\n".join(lines), parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.warning("Guruhga e'lon yuborilmadi: %s", e)
+
+
 async def broadcast_report(context, file_id, file_type, caption, report_id) -> None:
     """Adminlarga (tasdiqlash tugmalari bilan) va guruhga (tugmasiz) yuboradi."""
     kb = InlineKeyboardMarkup([[
@@ -1011,9 +1039,12 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
         ids = await available_ids(today)
         mapping = rotation.assign_cycle(ids, rotation.cycle_index(today))
         deadline = today + dt.timedelta(days=1)
+        name_by = {r["telegram_id"]: r["name"] for r in await db.get_active_residents()}
+        task_to_uid: dict[str, int] = {}
         for uid, task in mapping.items():
             if not task:
                 continue
+            task_to_uid[task] = uid
             await db.create_assignment(uid, today, task)
             try:
                 await context.bot.send_message(
@@ -1025,6 +1056,8 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                     parse_mode=ParseMode.HTML)
             except Exception as e:
                 logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
+        # Guruhga e'lon (har bir kishini belgilab)
+        await announce_to_group(context, today, deadline, task_to_uid, name_by)
     # Qaytish so'rovlari
     for r in await db.get_residents_returning_on(today):
         try:
