@@ -347,6 +347,7 @@ async def show_my_task(update, context, resident) -> None:
     msg = texts.my_task_msg(cyc_str, task, done, "door_out" in cats, "door_in" in cats)
     if task:
         msg += "\n\n" + texts.task_details(task)
+    msg += texts.duty_note(resident["duty_debt"])
     await update.message.reply_text(
         msg, parse_mode=ParseMode.HTML, reply_markup=main_menu(resident),
     )
@@ -1556,8 +1557,10 @@ async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
         if a["status"] not in ("assigned",):
             continue
         rec = await db.get_resident(a["telegram_id"])
-        await notify_subject(
-            context, rec, texts.predeadline_msg(a["areas"], texts.task_details(a["areas"])))
+        msg = texts.predeadline_msg(a["areas"], texts.task_details(a["areas"]))
+        if rec:
+            msg += texts.duty_note(rec["duty_debt"])
+        await notify_subject(context, rec, msg)
 
 
 async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:

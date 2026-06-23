@@ -310,6 +310,14 @@ def predeadline_msg(task: str, details: str) -> str:
     )
 
 
+def duty_note(n: int) -> str:
+    """Har doim ko'rsatiladigan: yana necha marta jazo navbatchiligi qolgani."""
+    if n <= 0:
+        return ""
+    return (f"\n\n⚠️ <b>Jazo navbatchiligi:</b> avvalgi vazifani bajarmaganingiz uchun "
+            f"yana <b>{n} marta</b> shu vazifa sizga beriladi.")
+
+
 def penalty_note(remaining: int) -> str:
     return (
         "\n\n⚠️ <b>Diqqat:</b> avvalgi vazifangizni bajarmaganingiz uchun "
