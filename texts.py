@@ -299,6 +299,17 @@ PAY_REJECTED = (
 )
 
 
+def predeadline_msg(task: str, details: str) -> str:
+    return (
+        "⏰ <b>1 soat qoldi!</b> Soat <b>05:00</b> gacha hisobot yuborishingiz shart.\n\n"
+        f"🧹 Vazifangiz: <b>{task}</b>\n\n"
+        f"{details}\n\n"
+        "Hammasini to'liq bajarib, 📤 → 🧹 Tozalik vazifamni bajardim orqali video yuboring.\n\n"
+        "❗️ Vaqtida bajarmasangiz: <b>100 000 so'm</b> jarima + <b>+2 navbatchilik</b> "
+        "qo'shiladi va keyingi siklda ham shu joy sizga beriladi."
+    )
+
+
 def penalty_note(remaining: int) -> str:
     return (
         "\n\n⚠️ <b>Diqqat:</b> avvalgi vazifangizni bajarmaganingiz uchun "

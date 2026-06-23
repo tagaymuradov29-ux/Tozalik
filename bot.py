@@ -1555,16 +1555,9 @@ async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
     for a in await db.get_cycle_assignments(yesterday):
         if a["status"] not in ("assigned",):
             continue
-        uid = a["telegram_id"]
-        try:
-            await context.bot.send_message(
-                uid,
-                "⏰ <b>1 soat qoldi!</b> Soat 05:00 gacha hisobot yuboring.\n"
-                f"🧹 Vazifangiz: <b>{a['areas']}</b> — hali yuborilmadi. "
-                "📤 orqali video yuboring, aks holda 100 000 so'm jarima.",
-                parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
+        rec = await db.get_resident(a["telegram_id"])
+        await notify_subject(
+            context, rec, texts.predeadline_msg(a["areas"], texts.task_details(a["areas"])))
 
 
 async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
