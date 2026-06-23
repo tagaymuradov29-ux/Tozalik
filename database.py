@@ -87,6 +87,7 @@ async def _create_tables() -> None:
 
             -- Migratsiyalar (eski bazalar uchun)
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS away_until DATE;
+            ALTER TABLE residents ADD COLUMN IF NOT EXISTS forced_task TEXT;
             ALTER TABLE fines ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'cleaning';
             ALTER TABLE extra_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
             """
@@ -186,6 +187,22 @@ async def clear_away(telegram_id: int) -> None:
         await con.execute(
             "UPDATE residents SET away_until=NULL WHERE telegram_id=$1", telegram_id
         )
+
+
+async def set_forced_task(telegram_id: int, task: str | None) -> None:
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE residents SET forced_task=$2 WHERE telegram_id=$1", telegram_id, task
+        )
+
+
+async def get_all_forced() -> dict[int, str]:
+    """Keyingi siklda majburiy o'sha vazifa beriladiganlar."""
+    async with _pool.acquire() as con:
+        rows = await con.fetch(
+            "SELECT telegram_id, forced_task FROM residents WHERE forced_task IS NOT NULL"
+        )
+        return {r["telegram_id"]: r["forced_task"] for r in rows}
 
 
 # ---------------- Assignments (sikl) ----------------

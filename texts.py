@@ -126,6 +126,52 @@ def my_task_msg(cycle_str: str, task: str | None, done_task: bool,
     return "\n".join(lines)
 
 
+# Har bir vazifaga nimalar kirishi (checklist)
+TASK_DETAILS = {
+    "🍳 Oshxona": (
+        "🍳 <b>Oshxonani tozalashga nimalar kiradi:</b>\n"
+        "1. Musorlarni yig'ish va musorga olib borib tashlash\n"
+        "2. Stollar ustini artib tozalash\n"
+        "3. Yerga gilamlar va stol taglarini supurib tozalash\n"
+        "4. Gaz plitani azelit bilan yuvish"
+    ),
+    "🚽 Hojatxona + 🚪 Koridor": (
+        "🚽 <b>Hojatxona + Koridorni tozalashga nimalar kiradi:</b>\n"
+        "1. Hojatxonadagi musor idishini tozalab, yangi paket qo'yish\n"
+        "2. Unitaz cho'tkasini tozalab, idishiga xlor solib qo'yish\n"
+        "3. Hojatxona polini artish\n"
+        "4. Perchatka kiyib unitazni xlor bilan yuvish\n"
+        "5. Koridordagi ortiqcha oyoq-kiyimlarni musorga tashlash\n"
+        "6. Eshik changini artish"
+    ),
+    "🚿 Dush": (
+        "🚿 <b>Dushni tozalashga nimalar kiradi:</b>\n"
+        "1. Dushdagi musorlarni olish, paketini almashtirish\n"
+        "2. Dush polini artib tozalash (kir mashina orqasi bilan)\n"
+        "3. Rakovinalarni tozalash\n"
+        "4. Vannani tozalash"
+    ),
+    "🗑 Musor (hammasini tashlab kelish)": (
+        "🗑 <b>Musor vazifasiga nimalar kiradi:</b>\n"
+        "1. Oshxona, hojatxona, dush — hamma joydagi musorlarni yig'ish\n"
+        "2. Hammasini musorga olib borib tashlash (eshik oldiga qo'ymang!)"
+    ),
+}
+
+TASK_NOTE = (
+    "\n\n❗️ <b>Eslatma:</b> Musorlarni eshik oldiga qo'ymang — yig'ib olib, "
+    "to'g'ridan-to'g'ri musorga tashlab keling!\n"
+    "Hamma joy toza bo'lishi shart. Chala tozalansa — qayta tozalaysiz va "
+    "<b>keyingi safar ham o'sha joy sizga beriladi</b>!\n"
+    "Shuning uchun bir martada toza qiling.\n"
+    "⏰ Vaqtida bajarmasangiz — <b>100 000 so'm</b> jarima."
+)
+
+
+def task_details(task: str) -> str:
+    return TASK_DETAILS.get(task, "")
+
+
 REPORT_MENU_TITLE = "📤 Qaysi hisobotni yuborasiz? Tanlang 👇"
 
 # Report inline tugmalari

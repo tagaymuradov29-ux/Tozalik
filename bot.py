@@ -105,6 +105,26 @@ async def available_ids(on_date: dt.date) -> list[int]:
     return [r["telegram_id"] for r in residents]
 
 
+def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str]) -> dict[int, str | None]:
+    """Navbat, lekin rad etilganlar (forced) o'sha vazifani oladi."""
+    result: dict[int, str | None] = {tid: None for tid in ids}
+    taken_people, taken_tasks = set(), set()
+    for tid in ids:
+        ft = forced.get(tid)
+        if ft and ft in texts.TASKS:
+            result[tid] = ft
+            taken_people.add(tid)
+            taken_tasks.add(ft)
+    free_tasks = [t for t in texts.TASKS if t not in taken_tasks]
+    free_people = [tid for tid in ids if tid not in taken_people]
+    k = min(len(free_people), len(free_tasks))
+    for j in range(k):
+        task = free_tasks[(cidx + j) % len(free_tasks)]
+        person = free_people[(cidx + j) % len(free_people)]
+        result[person] = task
+    return result
+
+
 # =================== Ro'yxatdan o'tish ===================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.effective_user
@@ -299,9 +319,11 @@ async def show_my_task(update, context, resident) -> None:
     done = bool(a and a["status"] in ("reported", "approved"))
     cats = await db.get_extra_categories(resident["telegram_id"], today)
     cyc_str = f"{fmt_short(cyc)} – {fmt_short(rotation.cycle_end(today))}"
+    msg = texts.my_task_msg(cyc_str, task, done, "door_out" in cats, "door_in" in cats)
+    if task:
+        msg += "\n\n" + texts.task_details(task)
     await update.message.reply_text(
-        texts.my_task_msg(cyc_str, task, done, "door_out" in cats, "door_in" in cats),
-        parse_mode=ParseMode.HTML, reply_markup=main_menu(resident),
+        msg, parse_mode=ParseMode.HTML, reply_markup=main_menu(resident),
     )
 
 
@@ -462,6 +484,8 @@ async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             a = await db.get_assignment(uid, cyc)
             if a:
                 await db.set_assignment_status(a["id"], "assigned")
+                # Chala tozalagan — keyingi safar ham o'sha joy unga beriladi
+                await db.set_forced_task(uid, a["areas"])
             # Muddat (sikl boshi + 1 kun) o'tgan bo'lsa darhol jarima
             if today_local() > cyc and not await db.has_fine(uid, cyc, "cleaning"):
                 await db.add_fine(uid, a["id"] if a else None, FINE_AMOUNT,
@@ -1057,7 +1081,8 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     today = today_local()
     if not rotation.before_start(today) and rotation.is_cycle_start(today):
         ids = await available_ids(today)
-        mapping = rotation.assign_cycle(ids, rotation.cycle_index(today))
+        forced = await db.get_all_forced()
+        mapping = assign_with_forced(ids, rotation.cycle_index(today), forced)
         deadline = today + dt.timedelta(days=1)
         name_by = {r["telegram_id"]: r["name"] for r in await db.get_active_residents()}
         task_to_uid: dict[str, int] = {}
@@ -1071,11 +1096,15 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                     uid,
                     f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
                     f"🧹 Vazifangiz: <b>{task}</b>\n"
-                    f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n"
-                    "Tozalab, 📤 orqali video yuboring. Yubormasangiz jarima yoziladi.",
+                    f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
+                    + texts.task_details(task) + texts.TASK_NOTE,
                     parse_mode=ParseMode.HTML)
             except Exception as e:
                 logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
+        # Qo'llanilgan forced'larni tozalash
+        for uid in forced:
+            if uid in ids:
+                await db.set_forced_task(uid, None)
         # Guruhga e'lon (har bir kishini belgilab)
         await announce_to_group(context, today, deadline, task_to_uid, name_by)
     # Qaytish so'rovlari
