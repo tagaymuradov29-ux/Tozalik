@@ -39,6 +39,8 @@ import datetime as _dt
 ANNOUNCE_HOUR: int = int(_get("ANNOUNCE_HOUR", "5"))
 # Eslatma soati (kechqurun)
 REMIND_HOUR: int = int(_get("REMIND_HOUR", "21"))
+# Muddatdan oldingi eslatma soati (04:00)
+PRE_DEADLINE_HOUR: int = int(_get("PRE_DEADLINE_HOUR", "4"))
 # Muddat (jarima yoziladigan) soati
 DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "5"))
 

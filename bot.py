@@ -37,6 +37,7 @@ from config import (
     DEADLINE_HOUR,
     FINE_AMOUNT,
     INITIAL_ORDER,
+    PRE_DEADLINE_HOUR,
     REMIND_HOUR,
     TZ,
     is_admin,
@@ -411,6 +412,7 @@ async def broadcast_report(context, file_id, file_type, caption, report_id) -> N
         InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"rok:{report_id}"),
         InlineKeyboardButton("❌ Rad etish", callback_data=f"rno:{report_id}"),
     ]])
+    # Videolar faqat adminga boradi (guruhga emas)
     for admin_id in ADMIN_IDS:
         try:
             if file_type == "video_note":
@@ -422,19 +424,6 @@ async def broadcast_report(context, file_id, file_type, caption, report_id) -> N
                                              parse_mode=ParseMode.HTML, reply_markup=kb)
         except Exception as e:
             logger.warning("Adminga hisobot yuborilmadi %s: %s", admin_id, e)
-    # Guruhga (tugmasiz)
-    gid = await db.get_setting("group_chat_id")
-    if gid:
-        try:
-            gid_int = int(gid)
-            gcap = caption.replace("\n\nTasdiqlaysizmi?", "")
-            if file_type == "video_note":
-                await context.bot.send_video_note(gid_int, file_id)
-                await context.bot.send_message(gid_int, gcap, parse_mode=ParseMode.HTML)
-            else:
-                await context.bot.send_video(gid_int, file_id, caption=gcap, parse_mode=ParseMode.HTML)
-        except Exception as e:
-            logger.warning("Guruhga hisobot yuborilmadi: %s", e)
 
 
 async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -589,11 +578,42 @@ async def show_member_card(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         lines.append("— atchot yo'q")
     kb = None
     if is_admin(query.from_user.id):
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("💸 Jarima yozish", callback_data=f"af:{uid}"),
-            InlineKeyboardButton("🗑 Chiqarib tashlash", callback_data=f"rem:{uid}"),
-        ]])
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💸 Jarima yozish", callback_data=f"af:{uid}"),
+             InlineKeyboardButton("🔄 Vazifani qayta ochish", callback_data=f"reopen:{uid}")],
+            [InlineKeyboardButton("🗑 Chiqarib tashlash", callback_data=f"rem:{uid}")],
+        ])
     await query.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML, reply_markup=kb)
+
+
+async def on_reopen_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin a'zoning joriy sikl tozalik vazifasini qayta 'bajarilmagan' qiladi."""
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    uid = int(query.data.split(":")[1])
+    today = today_local()
+    cyc = rotation.cycle_start(today)
+    a = await db.get_assignment(uid, cyc)
+    if not a:
+        await query.answer("Bu siklda vazifa yo'q.", show_alert=True)
+        return
+    await db.set_assignment_status(a["id"], "assigned")
+    await db.clear_fine_by(uid, cyc, "cleaning")
+    await query.answer("Qayta ochildi ✅")
+    await query.edit_message_reply_markup(reply_markup=None)
+    await query.message.reply_text(
+        f"🔄 Vazifa qayta ochildi: <b>{a['areas']}</b>. Endi qayta bajarilishi kerak.",
+        parse_mode=ParseMode.HTML)
+    try:
+        await context.bot.send_message(
+            uid,
+            f"🔄 Tozalik vazifangiz qayta ochildi: <b>{a['areas']}</b>.\n"
+            "Iltimos, bajarib, 📤 orqali to'g'ri video yuboring.",
+            parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
 
 
 async def show_task_distribution(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1097,6 +1117,27 @@ async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
                 pass
 
 
+async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """04:00: muddatdan 1 soat oldin 'hisobot yuboringlar' eslatmasi."""
+    today = today_local()
+    yesterday = today - dt.timedelta(days=1)
+    if rotation.before_start(yesterday) or not rotation.is_cycle_start(yesterday):
+        return
+    for a in await db.get_cycle_assignments(yesterday):
+        if a["status"] not in ("assigned",):
+            continue
+        uid = a["telegram_id"]
+        try:
+            await context.bot.send_message(
+                uid,
+                "⏰ <b>1 soat qoldi!</b> Soat 05:00 gacha hisobot yuboring.\n"
+                f"🧹 Vazifangiz: <b>{a['areas']}</b> — hali yuborilmadi. "
+                "📤 orqali video yuboring, aks holda 100 000 so'm jarima.",
+                parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+
+
 async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
     """05:00: vazifa berilgan kunning ertasi — hisobot bermaganlarga tozalik jarimasi.
 
@@ -1219,6 +1260,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_admin_fine_member, pattern=r"^af:"))
     app.add_handler(CallbackQueryHandler(on_remove_confirm, pattern=r"^rem(y:|n$)"))
     app.add_handler(CallbackQueryHandler(on_remove_member, pattern=r"^rem:"))
+    app.add_handler(CallbackQueryHandler(on_reopen_task, pattern=r"^reopen:"))
 
     app.add_handler(CommandHandler("id", cmd_id))
     app.add_handler(CommandHandler("help", cmd_help))
@@ -1238,6 +1280,7 @@ def main() -> None:
     jq = app.job_queue
     jq.run_daily(job_morning, time=dt.time(hour=ANNOUNCE_HOUR, minute=0, tzinfo=TZ))
     jq.run_daily(job_remind, time=dt.time(hour=REMIND_HOUR, minute=0, tzinfo=TZ))
+    jq.run_daily(job_predeadline, time=dt.time(hour=PRE_DEADLINE_HOUR, minute=0, tzinfo=TZ))
     jq.run_daily(job_deadline, time=dt.time(hour=DEADLINE_HOUR, minute=0, tzinfo=TZ))
 
     logger.info("Polling boshlandi...")
