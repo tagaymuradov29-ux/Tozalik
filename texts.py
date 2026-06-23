@@ -225,6 +225,20 @@ def report_rejected(label: str) -> str:
     )
 
 
+def reject_checklist_msg(task: str, done: list, notdone: list, deadline_str: str) -> str:
+    lines = [f"❌ <b>Hisobotingiz rad etildi (chala bajarilgan): {task}</b>\n"]
+    if done:
+        lines.append("✅ <b>Bajarilgan:</b>")
+        lines += [f"• {x}" for x in done]
+    if notdone:
+        lines.append("\n❌ <b>Bajarilmagan — qayta bajaring:</b>")
+        lines += [f"• {x}" for x in notdone]
+    lines.append(f"\n⏰ <b>{deadline_str} 05:00</b> gacha qayta bajarib, video yuboring.")
+    lines.append("⚠️ Chala bajarganingiz uchun jarima sifatida <b>+1 navbatchilik</b> qo'shildi "
+                 "(keyingi siklda ham shu joy sizga beriladi).")
+    return "\n".join(lines)
+
+
 def _sum(n: int) -> str:
     return f"{n:,}".replace(",", " ")
 

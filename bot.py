@@ -271,8 +271,10 @@ async def ensure_cycle_assignment(telegram_id: int, cyc: dt.date) -> str | None:
     ids = await available_ids(cyc)
     if telegram_id not in ids:
         return None
-    forced = await db.get_all_forced()
-    debt = {r["telegram_id"]: r["duty_debt"] for r in await db.get_active_residents()}
+    residents_all = await db.get_active_residents()
+    forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
+              if r["forced_task"] and r["duty_debt"] > 0}
+    debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
     mapping = assign_with_forced(ids, rotation.cycle_index(cyc), forced, debt)
     task = mapping.get(telegram_id)
     if task:
@@ -629,11 +631,21 @@ async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             a = await db.get_assignment(uid, cyc)
             if a:
                 await db.set_assignment_status(a["id"], "assigned")
-                # Chala tozalagan — keyingi safar ham o'sha joy unga beriladi
+                # Chala bajargani uchun: +1 navbatchilik + keyingi safar ham o'sha joy
+                await db.incr_duty_debt(uid, 1)
                 await db.set_forced_task(uid, a["areas"])
-            if today_local() > cyc and not await db.has_fine(uid, cyc, "cleaning"):
-                await db.add_fine(uid, a["id"] if a else None, FINE_AMOUNT,
-                                  "Tozalik vazifasi tasdiqlanmadi", cyc, "cleaning")
+                # Admin checklisti bo'yicha bajarilgan/bajarilmagan bandlar
+                checked = context.bot_data.get(f"ck:{report['id']}", set())
+                items = task_items(a["areas"])
+                done = [items[i] for i in sorted(checked) if i < len(items)]
+                notdone = [items[i] for i in range(len(items)) if i not in checked]
+                deadline = today_local() + dt.timedelta(days=1)
+                await query.answer("Rad etildi")
+                await _mark(query, "❌ <b>Rad etildi (+1 navbatchilik)</b>")
+                await notify_subject(
+                    context, subject,
+                    texts.reject_checklist_msg(a["areas"], done, notdone, fmt_short(deadline)))
+                return
         await query.answer("Rad etildi")
         await _mark(query, "❌ <b>Rad etildi</b>")
         await notify_subject(context, subject, texts.report_rejected(label))
@@ -1397,7 +1409,9 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
         ids = await available_ids(today)
         residents_all = await db.get_active_residents()
         rec_by = {r["telegram_id"]: r for r in residents_all}
-        forced = await db.get_all_forced()
+        # "O'sha joy" faqat navbatchilik qarzi bor (jazolangan) odamlarga
+        forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
+                  if r["forced_task"] and r["duty_debt"] > 0}
         debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
         mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt)
         deadline = today + dt.timedelta(days=1)
@@ -1413,7 +1427,10 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
             note = texts.TASK_NOTE
             if rec and rec["duty_debt"] > 0:
                 await db.incr_duty_debt(uid, -1)
-                note += texts.penalty_note(rec["duty_debt"] - 1)
+                remaining = rec["duty_debt"] - 1
+                note += texts.penalty_note(remaining)
+                if remaining <= 0:
+                    await db.set_forced_task(uid, None)
             details = texts.task_details(task)
             if rec and rec["proxy_uid"]:
                 # Telefonsiz a'zo — boshqaruvchisiga yuboramiz
@@ -1436,10 +1453,6 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                         parse_mode=ParseMode.HTML)
                 except Exception as e:
                     logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
-        # Qo'llanilgan forced'larni tozalash
-        for uid in forced:
-            if uid in ids:
-                await db.set_forced_task(uid, None)
         # Guruhga e'lon (proxy bo'lsa boshqaruvchisini belgilaymiz)
         await announce_to_group(context, today, deadline, task_to_uid, name_by, rec_by)
     # Qaytish so'rovlari
@@ -1530,6 +1543,7 @@ async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
             note = ""
             if first:
                 await db.incr_duty_debt(uid, 2)
+                await db.set_forced_task(uid, a["areas"])
                 note = texts.penalty_note(2) + "\n⏳ Yana 24 soat muhlat berildi."
             rec = await db.get_resident(uid)
             await notify_subject(
