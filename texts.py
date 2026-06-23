@@ -193,6 +193,30 @@ RB_LABELS = {
 
 SEND_VIDEO_NOW = "📹 Endi shu hisobot uchun <b>video</b> yuboring 👇"
 
+SELF_OK = "✅ Ha, to'liq bajardim"
+SELF_NO = "❌ Yo'q, to'liq emas"
+SELF_SENT = "✅ Video admin tasdig'iga yuborildi. Tasdiqlangach jarima yozilmaydi. Rahmat!"
+SELF_REDO = (
+    "ℹ️ Yaxshi. Vazifangiz hali <b>ochiq</b> qoldi.\n"
+    "Hamma joyni to'liq bajarib, qaytadan to'liq video yuboring."
+)
+
+
+def task_checklist_prompt(task: str, items: list) -> str:
+    lines = [f"🧹 <b>Vazifangiz: {task}</b>\n",
+             "Quyidagilarni bajardingizmi? Hammasini to'liq qilib, "
+             "<b>bitta videoda</b> ko'rsatib yuboring 👇\n"]
+    lines += [f"• {x}" for x in items]
+    return "\n".join(lines)
+
+
+def self_confirm_ask(task: str, items: list) -> str:
+    lines = [f"🧹 <b>{task}</b> — videongizni yubordingiz.\n",
+             "Quyidagilarning <b>hammasini</b> to'liq bajarib, videoda ko'rsatdingizmi?\n"]
+    lines += [f"• {x}" for x in items]
+    lines.append("\n👇")
+    return "\n".join(lines)
+
 # Tugmaga qarab qo'shimcha izoh
 SEND_VIDEO_EXTRA = {
     "task": ("Bu yerga 3 kunda bir marta sizga berilgan vazifani yuborasiz.\n"

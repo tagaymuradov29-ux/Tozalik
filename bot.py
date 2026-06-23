@@ -397,17 +397,33 @@ async def on_report_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     query = update.callback_query
     await query.answer()
     parts = query.data.split(":")
+    proxy = None
     if parts[0] == "repx":
-        # Telefonsiz a'zo (uka) vazifasi uchun hisobot
-        context.user_data["pending_category"] = "task"
-        context.user_data["pending_proxy"] = int(parts[1])
-        await query.edit_message_text(
-            f"{texts.RB_TASK} (uka uchun)\n\n{texts.SEND_VIDEO_NOW}\n\n"
-            f"<i>{texts.SEND_VIDEO_EXTRA['task']}</i>", parse_mode=ParseMode.HTML)
-        return
-    cat = parts[1]
+        cat = "task"
+        proxy = int(parts[1])
+    else:
+        cat = parts[1]
     context.user_data["pending_category"] = cat
-    context.user_data.pop("pending_proxy", None)
+    if proxy:
+        context.user_data["pending_proxy"] = proxy
+    else:
+        context.user_data.pop("pending_proxy", None)
+
+    if cat == "task":
+        # Berilgan joy bo'yicha checklist ko'rsatamiz
+        subject_uid = proxy or query.from_user.id
+        cyc = rotation.cycle_start(today_local())
+        a = await db.get_assignment(subject_uid, cyc)
+        if a:
+            items = task_items(a["areas"])
+            head = texts.task_checklist_prompt(a["areas"], items)
+            suffix = " (uka uchun)" if proxy else ""
+            await query.edit_message_text(
+                head + suffix + f"\n\n{texts.SEND_VIDEO_NOW}", parse_mode=ParseMode.HTML)
+        else:
+            await query.edit_message_text(texts.NO_TASK_TO_REPORT)
+        return
+
     label = texts.RB_LABELS[cat]
     extra = texts.SEND_VIDEO_EXTRA.get(cat)
     text = f"{label}\n\n{texts.SEND_VIDEO_NOW}"
@@ -446,29 +462,31 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     subject_uid = proxy_uid if proxy_uid else user.id
     subject = await db.get_resident(subject_uid) if proxy_uid else resident
 
-    no_task = False
+    # Tozalik vazifasi: avval o'ziga "to'liq bajardingmi?" deb tasdiq so'raymiz
     if cat == "task":
         cyc = rotation.cycle_start(today)
         a = await db.get_assignment(subject_uid, cyc)
-        if a:
-            await db.set_assignment_status(a["id"], "reported")
-        else:
-            no_task = True
-    rid = await db.add_extra_report(subject_uid, today, cat, file_id, file_type)
-    if no_task:
-        await update.message.reply_text(texts.NO_TASK_TO_REPORT)
+        if not a:
+            await update.message.reply_text(texts.NO_TASK_TO_REPORT)
+            return
+        context.user_data["self_video"] = (file_id, file_type, proxy_uid)
+        items = task_items(a["areas"])
+        await update.message.reply_text(
+            texts.self_confirm_ask(a["areas"], items), parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton(texts.SELF_OK, callback_data="selfok"),
+                InlineKeyboardButton(texts.SELF_NO, callback_data="selfno"),
+            ]]))
+        return
 
+    rid = await db.add_extra_report(subject_uid, today, cat, file_id, file_type)
     await update.message.reply_text(texts.report_saved(label), parse_mode=ParseMode.HTML)
 
     who = f"{subject['name'] if subject else subject_uid}"
     if proxy_uid:
         who += f" (uka — {resident['name']} yubordi)"
-    if cat == "task" and not no_task:
-        cap = f"📹 <b>{who}</b>\n🧹 {a['areas']}\n🗓 {fmt_date(today)}"
-        await send_task_to_admins(context, file_id, file_type, cap, rid, a["areas"])
-    else:
-        caption = f"📹 <b>{who}</b>\n{label}\n🗓 {fmt_date(today)}\n\nTasdiqlaysizmi?"
-        await broadcast_report(context, file_id, file_type, caption, rid)
+    caption = f"📹 <b>{who}</b>\n{label}\n🗓 {fmt_date(today)}\n\nTasdiqlaysizmi?"
+    await broadcast_report(context, file_id, file_type, caption, rid)
 
     # Eshik: chiqishdan keyin kirish tugmasi
     if cat == "door_out":
@@ -477,6 +495,40 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton(texts.RB_DOOR_IN, callback_data="rep:door_in")]]),
         )
+
+
+async def on_self_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Foydalanuvchi o'zi 'to'liq bajardim/yo'q' deb tasdiqlaydi."""
+    query = update.callback_query
+    sv = context.user_data.pop("self_video", None)
+    await query.answer()
+    if not sv:
+        await query.edit_message_text("⏳ Bu so'rov eskirgan. Qaytadan video yuboring.")
+        return
+    file_id, file_type, proxy_uid = sv
+    if query.data == "selfno":
+        # Adminga bormaydi, vazifa ochiq qoladi
+        await query.edit_message_text(texts.SELF_REDO, parse_mode=ParseMode.HTML)
+        return
+    # selfok — adminga checklist bilan yuboriladi
+    user = query.from_user
+    today = today_local()
+    subject_uid = proxy_uid if proxy_uid else user.id
+    subject = await db.get_resident(subject_uid)
+    sender = await db.get_resident(user.id)
+    cyc = rotation.cycle_start(today)
+    a = await db.get_assignment(subject_uid, cyc)
+    if not a:
+        await query.edit_message_text(texts.NO_TASK_TO_REPORT)
+        return
+    await db.set_assignment_status(a["id"], "reported")
+    rid = await db.add_extra_report(subject_uid, today, "task", file_id, file_type)
+    who = subject["name"] if subject else str(subject_uid)
+    if proxy_uid:
+        who += f" (uka — {sender['name'] if sender else ''} yubordi)"
+    cap = f"📹 <b>{who}</b>\n🧹 {a['areas']}\n🗓 {fmt_date(today)}"
+    await send_task_to_admins(context, file_id, file_type, cap, rid, a["areas"])
+    await query.edit_message_text(texts.SELF_SENT, parse_mode=ParseMode.HTML)
 
 
 def html_escape(s: str) -> str:
@@ -1664,6 +1716,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_pay_start, pattern=r"^pay$"))
     app.add_handler(CallbackQueryHandler(on_payment_review, pattern=r"^p(ok|no):"))
     app.add_handler(CallbackQueryHandler(on_test_review, pattern=r"^t(ok|no):"))
+    app.add_handler(CallbackQueryHandler(on_self_confirm, pattern=r"^self(ok|no)$"))
 
     app.add_handler(CommandHandler("id", cmd_id))
     app.add_handler(CommandHandler("help", cmd_help))
