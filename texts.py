@@ -136,7 +136,8 @@ TASK_DETAILS = {
         "1. Musorlarni yig'ish va musorga olib borib tashlash\n"
         "2. Stollar ustini artib tozalash\n"
         "3. Yerga gilamlar va stol taglarini supurib tozalash\n"
-        "4. Gaz plitani azelit bilan yuvish"
+        "4. Gaz plitani azelit bilan yuvish\n"
+        "5. Muzlatkichni tozalab artib, ortiqcha va eski narsalarni olib tashlash"
     ),
     "🚽 Hojatxona + 🚪 Koridor": (
         "🚽 <b>Hojatxona + Koridorni tozalashga nimalar kiradi:</b>\n"
