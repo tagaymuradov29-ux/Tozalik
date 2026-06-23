@@ -1594,21 +1594,36 @@ async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
             await notify_subject(
                 context, rec,
                 texts.fine_summary_msg([(f"Tozalik: {a['areas']}", FINE_AMOUNT)], FINE_AMOUNT) + note)
-            # Guruhga e'lon (proxy bo'lsa boshqaruvchini belgilaymiz)
-            if gid and rec:
-                tag_uid = rec["proxy_uid"] or uid
-                nm = rec["name"]
-                if rec["proxy_uid"]:
-                    mgr = await db.get_resident(rec["proxy_uid"])
-                    tag = mention(tag_uid, mgr["name"] if mgr else "") + f" (ukasi {html_escape(nm)})"
+
+    # 05:00 da guruhga umumiy natija (kim bajardi / kim bajarmadi + jarima)
+    base1 = today - dt.timedelta(days=1)
+    if gid and not rotation.before_start(base1) and rotation.is_cycle_start(base1):
+        asgs = await db.get_cycle_assignments(base1)
+        if asgs:
+            done, notdone = [], []
+            for a in asgs:
+                tag = await tag_for(a["telegram_id"])
+                if a["status"] in ("reported", "approved"):
+                    done.append((tag, a["areas"]))
                 else:
-                    tag = mention(uid, nm)
-                try:
-                    await context.bot.send_message(
-                        int(gid), texts.group_fine_announce(tag, a["areas"], FINE_AMOUNT),
-                        parse_mode=ParseMode.HTML)
-                except Exception:
-                    pass
+                    notdone.append((tag, a["areas"], FINE_AMOUNT))
+            try:
+                await context.bot.send_message(
+                    int(gid), texts.group_summary(fmt_short(base1), done, notdone),
+                    parse_mode=ParseMode.HTML)
+            except Exception as e:
+                logger.warning("Guruh natijasi yuborilmadi: %s", e)
+
+
+async def tag_for(uid: int) -> str:
+    """Guruhda belgilash uchun mention; telefonsiz a'zo bo'lsa boshqaruvchisini belgilaydi."""
+    rec = await db.get_resident(uid)
+    if not rec:
+        return str(uid)
+    if rec["proxy_uid"]:
+        mgr = await db.get_resident(rec["proxy_uid"])
+        return mention(rec["proxy_uid"], mgr["name"] if mgr else "") + f" (ukasi {html_escape(rec['name'])})"
+    return mention(uid, rec["name"])
 
 
 # =================== Ishga tushirish ===================

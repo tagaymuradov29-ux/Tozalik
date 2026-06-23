@@ -373,6 +373,22 @@ def group_fine_announce(mention_html: str, task: str, amount: int) -> str:
 def group_paid_announce(mention_html: str) -> str:
     return f"✅ {mention_html} jarimasini to'ladi (admin tasdiqladi). Rahmat! 👏"
 
+
+def group_summary(date_str: str, done: list, notdone: list) -> str:
+    """done: [(mention, task)], notdone: [(mention, task, amount)]"""
+    lines = [f"🕔 <b>05:00 — Tozalik natijasi ({date_str})</b>\n"]
+    if done:
+        lines.append("✅ <b>Vazifasini bajarganlar:</b>")
+        for m, t in done:
+            lines.append(f"• {m} — {t}")
+    if notdone:
+        lines.append("\n❌ <b>Bajarmaganlar (jarima yozildi):</b>")
+        for m, t, amt in notdone:
+            lines.append(f"• {m} — {t} — <b>{_sum(amt)} so'm</b> + navbatchilik")
+    if not done and not notdone:
+        lines.append("Bu sikl uchun vazifa taqsimoti yo'q edi.")
+    return "\n".join(lines)
+
 # Qo'lda jarima sabablari (100 000 so'm)
 FINE_REASONS = {
     "oshxona": "Oshxonadan foydalanib hisobot bermadi",
