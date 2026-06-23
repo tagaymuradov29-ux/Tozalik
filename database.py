@@ -85,9 +85,22 @@ async def _create_tables() -> None:
                 value         TEXT
             );
 
+            -- Jarima to'lovi (elektr cheki) tasdiqlash uchun
+            CREATE TABLE IF NOT EXISTS payments (
+                id            SERIAL PRIMARY KEY,
+                telegram_id   BIGINT NOT NULL,
+                file_id       TEXT,
+                file_type     TEXT,
+                amount        INT NOT NULL DEFAULT 0,
+                status        TEXT NOT NULL DEFAULT 'pending',
+                created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+
             -- Migratsiyalar (eski bazalar uchun)
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS away_until DATE;
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS forced_task TEXT;
+            ALTER TABLE residents ADD COLUMN IF NOT EXISTS duty_debt INT NOT NULL DEFAULT 0;
+            ALTER TABLE residents ADD COLUMN IF NOT EXISTS proxy_uid BIGINT;
             ALTER TABLE fines ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'cleaning';
             ALTER TABLE extra_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
             """
@@ -194,6 +207,57 @@ async def set_forced_task(telegram_id: int, task: str | None) -> None:
         await con.execute(
             "UPDATE residents SET forced_task=$2 WHERE telegram_id=$1", telegram_id, task
         )
+
+
+async def incr_duty_debt(telegram_id: int, delta: int) -> None:
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE residents SET duty_debt = GREATEST(0, duty_debt + $2) WHERE telegram_id=$1",
+            telegram_id, delta,
+        )
+
+
+async def create_proxy_member(name: str, proxy_uid: int) -> int:
+    """Telefonsiz a'zo — manageri (proxy_uid) belgilanadi. Sun'iy manfiy id beriladi."""
+    async with _pool.acquire() as con:
+        new_id = await con.fetchval("SELECT COALESCE(MIN(telegram_id),0) - 1 FROM residents")
+        if new_id is None or new_id >= 0:
+            new_id = -1
+        await con.execute(
+            "INSERT INTO residents (telegram_id, name, phone, status, approved_at, proxy_uid) "
+            "VALUES ($1,$2,'telefonsiz','active', now(), $3)",
+            new_id, name, proxy_uid,
+        )
+        return new_id
+
+
+async def get_proxy_members_for(proxy_uid: int) -> list[asyncpg.Record]:
+    async with _pool.acquire() as con:
+        return await con.fetch(
+            "SELECT * FROM residents WHERE proxy_uid=$1 AND status='active'", proxy_uid
+        )
+
+
+# ---------------- Payments (jarima to'lovi) ----------------
+async def add_payment(telegram_id: int, file_id: str | None, file_type: str | None,
+                      amount: int) -> int:
+    async with _pool.acquire() as con:
+        row = await con.fetchrow(
+            "INSERT INTO payments (telegram_id, file_id, file_type, amount) "
+            "VALUES ($1,$2,$3,$4) RETURNING id",
+            telegram_id, file_id, file_type, amount,
+        )
+        return row["id"]
+
+
+async def get_payment(payment_id: int) -> asyncpg.Record | None:
+    async with _pool.acquire() as con:
+        return await con.fetchrow("SELECT * FROM payments WHERE id=$1", payment_id)
+
+
+async def set_payment_status(payment_id: int, status: str) -> None:
+    async with _pool.acquire() as con:
+        await con.execute("UPDATE payments SET status=$2 WHERE id=$1", payment_id, status)
 
 
 async def get_all_forced() -> dict[int, str]:

@@ -105,8 +105,14 @@ async def available_ids(on_date: dt.date) -> list[int]:
     return [r["telegram_id"] for r in residents]
 
 
-def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str]) -> dict[int, str | None]:
-    """Navbat, lekin rad etilganlar (forced) o'sha vazifani oladi."""
+def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str],
+                       debt: dict[int, int] | None = None) -> dict[int, str | None]:
+    """Navbat taqsimoti:
+    - forced (rad etilgan) o'sha vazifani oladi;
+    - navbatchilik qarzi (debt>0) bo'lganlar har siklda majburan navbatda;
+    - qolganlar adolatli aylanadi (cidx bo'yicha siljiydi).
+    """
+    debt = debt or {}
     result: dict[int, str | None] = {tid: None for tid in ids}
     taken_people, taken_tasks = set(), set()
     for tid in ids:
@@ -116,12 +122,16 @@ def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str]) -> dic
             taken_people.add(tid)
             taken_tasks.add(ft)
     free_tasks = [t for t in texts.TASKS if t not in taken_tasks]
-    free_people = [tid for tid in ids if tid not in taken_people]
+    debt_people = [tid for tid in ids if tid not in taken_people and debt.get(tid, 0) > 0]
+    normal_people = [tid for tid in ids if tid not in taken_people and tid not in debt_people]
+    if normal_people:
+        shift = cidx % len(normal_people)
+        normal_people = normal_people[shift:] + normal_people[:shift]
+    free_people = debt_people + normal_people
     k = min(len(free_people), len(free_tasks))
     for j in range(k):
         task = free_tasks[(cidx + j) % len(free_tasks)]
-        person = free_people[(cidx + j) % len(free_people)]
-        result[person] = task
+        result[free_people[j]] = task
     return result
 
 
@@ -261,7 +271,9 @@ async def ensure_cycle_assignment(telegram_id: int, cyc: dt.date) -> str | None:
     ids = await available_ids(cyc)
     if telegram_id not in ids:
         return None
-    mapping = rotation.assign_cycle(ids, rotation.cycle_index(cyc))
+    forced = await db.get_all_forced()
+    debt = {r["telegram_id"]: r["duty_debt"] for r in await db.get_active_residents()}
+    mapping = assign_with_forced(ids, rotation.cycle_index(cyc), forced, debt)
     task = mapping.get(telegram_id)
     if task:
         await db.create_assignment(telegram_id, cyc, task)
@@ -280,6 +292,17 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     if awaiting == "custom_fine":
         await handle_custom_fine(update, context, text)
+        return
+    if awaiting == "proxy_name" and is_admin(user.id):
+        context.user_data["proxy_name"] = text
+        context.user_data.pop("awaiting", None)
+        members = [r for r in await db.get_active_residents()
+                   if not is_admin(r["telegram_id"]) and r["telegram_id"] > 0
+                   and r["proxy_uid"] is None]
+        rows = [[InlineKeyboardButton(r["name"], callback_data=f"mp:{r['telegram_id']}")]
+                for r in members]
+        await update.message.reply_text(texts.ADD_PROXY_PICK_MANAGER,
+                                        reply_markup=InlineKeyboardMarkup(rows))
         return
 
     resident = await db.get_resident(user.id)
@@ -338,14 +361,51 @@ def report_menu_kb() -> InlineKeyboardMarkup:
 
 
 async def show_report_menu(update, context) -> None:
-    await update.message.reply_text(texts.REPORT_MENU_TITLE, reply_markup=report_menu_kb())
+    user = update.effective_user
+    rows = [
+        [InlineKeyboardButton(texts.RB_TASK, callback_data="rep:task")],
+        [InlineKeyboardButton(texts.RB_KITCHEN, callback_data="rep:kitchen_used")],
+        [InlineKeyboardButton(texts.RB_SHOWER, callback_data="rep:shower_after")],
+        [InlineKeyboardButton(texts.RB_DOOR_OUT, callback_data="rep:door_out")],
+        [InlineKeyboardButton(texts.RB_DOOR_IN, callback_data="rep:door_in")],
+    ]
+    # Boshqaradigan telefonsiz a'zo(lar) vazifasi uchun tugma
+    if not rotation.before_start(today_local()):
+        cyc = rotation.cycle_start(today_local())
+        for b in await db.get_proxy_members_for(user.id):
+            a = await db.get_assignment(b["telegram_id"], cyc)
+            if a and a["status"] in ("assigned", "missed"):
+                rows.append([InlineKeyboardButton(
+                    f"🧹 {b['name']} vazifasini bajardi", callback_data=f"repx:{b['telegram_id']}")])
+    await update.message.reply_text(texts.REPORT_MENU_TITLE,
+                                    reply_markup=InlineKeyboardMarkup(rows))
+
+
+def report_menu_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(texts.RB_TASK, callback_data="rep:task")],
+        [InlineKeyboardButton(texts.RB_KITCHEN, callback_data="rep:kitchen_used")],
+        [InlineKeyboardButton(texts.RB_SHOWER, callback_data="rep:shower_after")],
+        [InlineKeyboardButton(texts.RB_DOOR_OUT, callback_data="rep:door_out")],
+        [InlineKeyboardButton(texts.RB_DOOR_IN, callback_data="rep:door_in")],
+    ])
 
 
 async def on_report_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    cat = query.data.split(":")[1]
+    parts = query.data.split(":")
+    if parts[0] == "repx":
+        # Telefonsiz a'zo (uka) vazifasi uchun hisobot
+        context.user_data["pending_category"] = "task"
+        context.user_data["pending_proxy"] = int(parts[1])
+        await query.edit_message_text(
+            f"{texts.RB_TASK} (uka uchun)\n\n{texts.SEND_VIDEO_NOW}\n\n"
+            f"<i>{texts.SEND_VIDEO_EXTRA['task']}</i>", parse_mode=ParseMode.HTML)
+        return
+    cat = parts[1]
     context.user_data["pending_category"] = cat
+    context.user_data.pop("pending_proxy", None)
     label = texts.RB_LABELS[cat]
     extra = texts.SEND_VIDEO_EXTRA.get(cat)
     text = f"{label}\n\n{texts.SEND_VIDEO_NOW}"
@@ -357,6 +417,9 @@ async def on_report_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # =================== Video hisobot ===================
 async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
+    if context.user_data.get("awaiting") == "payment":
+        await on_payment_media(update, context)
+        return
     resident = await db.get_resident(user.id)
     if not resident or resident["status"] != "active":
         await update.message.reply_text(texts.NOT_REGISTERED)
@@ -369,6 +432,7 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     cat = context.user_data.pop("pending_category", None)
+    proxy_uid = context.user_data.pop("pending_proxy", None)
     if not cat:
         await update.message.reply_text(
             "Avval qaysi hisobot ekanini tanlang 👇", reply_markup=report_menu_kb()
@@ -377,23 +441,32 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     today = today_local()
     label = texts.RB_LABELS[cat]
+    subject_uid = proxy_uid if proxy_uid else user.id
+    subject = await db.get_resident(subject_uid) if proxy_uid else resident
 
     no_task = False
     if cat == "task":
         cyc = rotation.cycle_start(today)
-        a = await db.get_assignment(user.id, cyc)
+        a = await db.get_assignment(subject_uid, cyc)
         if a:
             await db.set_assignment_status(a["id"], "reported")
         else:
             no_task = True
-    rid = await db.add_extra_report(user.id, today, cat, file_id, file_type)
+    rid = await db.add_extra_report(subject_uid, today, cat, file_id, file_type)
     if no_task:
         await update.message.reply_text(texts.NO_TASK_TO_REPORT)
 
     await update.message.reply_text(texts.report_saved(label), parse_mode=ParseMode.HTML)
 
-    caption = f"📹 <b>{resident['name']}</b>\n{label}\n🗓 {fmt_date(today)}\n\nTasdiqlaysizmi?"
-    await broadcast_report(context, file_id, file_type, caption, rid)
+    who = f"{subject['name'] if subject else subject_uid}"
+    if proxy_uid:
+        who += f" (uka — {resident['name']} yubordi)"
+    if cat == "task" and not no_task:
+        cap = f"📹 <b>{who}</b>\n🧹 {a['areas']}\n🗓 {fmt_date(today)}"
+        await send_task_to_admins(context, file_id, file_type, cap, rid, a["areas"])
+    else:
+        caption = f"📹 <b>{who}</b>\n{label}\n🗓 {fmt_date(today)}\n\nTasdiqlaysizmi?"
+        await broadcast_report(context, file_id, file_type, caption, rid)
 
     # Eshik: chiqishdan keyin kirish tugmasi
     if cat == "door_out":
@@ -412,8 +485,9 @@ def mention(uid: int, name: str) -> str:
     return f'<a href="tg://user?id={uid}">{html_escape(name)}</a>'
 
 
-async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by) -> None:
+async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by, rec_by=None) -> None:
     """Guruhga yangi taqsimotni har bir kishini belgilab e'lon qiladi."""
+    rec_by = rec_by or {}
     gid = await db.get_setting("group_chat_id")
     if not gid:
         return
@@ -422,7 +496,16 @@ async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by
     ]
     for task in texts.TASKS:
         uid = task_to_uid.get(task)
-        who = mention(uid, name_by.get(uid, "—")) if uid else "—"
+        if not uid:
+            who = "—"
+        else:
+            rec = rec_by.get(uid)
+            if rec and rec["proxy_uid"]:
+                # Telefonsiz a'zo — boshqaruvchini belgilaymiz
+                who = (mention(rec["proxy_uid"], name_by.get(rec["proxy_uid"], "")) +
+                       f" (ukasi {html_escape(rec['name'])} qilishi kerak)")
+            else:
+                who = mention(uid, name_by.get(uid, "—"))
         lines.append(f"{task} → {who}")
     lines.append(f"\n⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.")
     lines.append("Tozalab, botga 📤 orqali video yuboring.")
@@ -452,6 +535,66 @@ async def broadcast_report(context, file_id, file_type, caption, report_id) -> N
             logger.warning("Adminga hisobot yuborilmadi %s: %s", admin_id, e)
 
 
+def task_items(task: str) -> list[str]:
+    out = []
+    for line in texts.TASK_DETAILS.get(task, "").split("\n"):
+        line = line.strip()
+        if line and line[0].isdigit():
+            out.append(line.split(".", 1)[1].strip() if "." in line else line)
+    return out
+
+
+def checklist_kb(rid: int, task: str, checked: set) -> InlineKeyboardMarkup:
+    rows = []
+    for i, it in enumerate(task_items(task)):
+        mark = "✅" if i in checked else "⬜️"
+        rows.append([InlineKeyboardButton(f"{mark} {it[:45]}", callback_data=f"ck:{rid}:{i}")])
+    rows.append([
+        InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"rok:{rid}"),
+        InlineKeyboardButton("❌ Rad etish", callback_data=f"rno:{rid}"),
+    ])
+    return InlineKeyboardMarkup(rows)
+
+
+async def send_task_to_admins(context, file_id, file_type, caption, rid, task) -> None:
+    """Tozalik vazifasi videosini adminlarga checklist bilan yuboradi."""
+    context.bot_data[f"task:{rid}"] = task
+    context.bot_data[f"ck:{rid}"] = set()
+    kb = checklist_kb(rid, task, set())
+    full = caption + "\n\n📋 <b>Tekshiring (belgilang):</b>"
+    for admin_id in ADMIN_IDS:
+        try:
+            if file_type == "video_note":
+                await context.bot.send_video_note(admin_id, file_id)
+                await context.bot.send_message(admin_id, full, parse_mode=ParseMode.HTML,
+                                               reply_markup=kb)
+            else:
+                await context.bot.send_video(admin_id, file_id, caption=full,
+                                             parse_mode=ParseMode.HTML, reply_markup=kb)
+        except Exception as e:
+            logger.warning("Adminga vazifa yuborilmadi %s: %s", admin_id, e)
+
+
+async def on_checklist_toggle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    _, rid_str, idx_str = query.data.split(":")
+    rid, idx = int(rid_str), int(idx_str)
+    checked = context.bot_data.setdefault(f"ck:{rid}", set())
+    if idx in checked:
+        checked.discard(idx)
+    else:
+        checked.add(idx)
+    task = context.bot_data.get(f"task:{rid}", "")
+    await query.answer()
+    try:
+        await query.edit_message_reply_markup(reply_markup=checklist_kb(rid, task, checked))
+    except Exception:
+        pass
+
+
 async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not is_admin(query.from_user.id):
@@ -466,6 +609,7 @@ async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     cat = report["category"]
     rdate = report["report_date"]
     label = texts.RB_LABELS.get(cat, cat)
+    subject = await db.get_resident(uid)
 
     if action == "rok":
         await db.set_extra_report_status(report["id"], "approved")
@@ -477,10 +621,7 @@ async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await db.clear_fine_by(uid, cyc, "cleaning")
         await query.answer("Tasdiqlandi ✅")
         await _mark(query, "✅ <b>Tasdiqlandi</b>")
-        try:
-            await context.bot.send_message(uid, texts.REPORT_APPROVED, parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
+        await notify_subject(context, subject, texts.REPORT_APPROVED)
     else:  # rno
         await db.set_extra_report_status(report["id"], "rejected")
         if cat == "task":
@@ -490,16 +631,28 @@ async def on_report_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 await db.set_assignment_status(a["id"], "assigned")
                 # Chala tozalagan — keyingi safar ham o'sha joy unga beriladi
                 await db.set_forced_task(uid, a["areas"])
-            # Muddat (sikl boshi + 1 kun) o'tgan bo'lsa darhol jarima
             if today_local() > cyc and not await db.has_fine(uid, cyc, "cleaning"):
                 await db.add_fine(uid, a["id"] if a else None, FINE_AMOUNT,
                                   "Tozalik vazifasi tasdiqlanmadi", cyc, "cleaning")
         await query.answer("Rad etildi")
         await _mark(query, "❌ <b>Rad etildi</b>")
-        try:
-            await context.bot.send_message(uid, texts.report_rejected(label), parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
+        await notify_subject(context, subject, texts.report_rejected(label))
+
+
+async def notify_subject(context, resident_rec, text: str) -> None:
+    """A'zoga xabar yuboradi; telefonsiz (proxy) bo'lsa — boshqaruvchisiga."""
+    if not resident_rec:
+        return
+    target = resident_rec["proxy_uid"] or resident_rec["telegram_id"]
+    if target <= 0:
+        return
+    prefix = ""
+    if resident_rec["proxy_uid"]:
+        prefix = f"(Ukangiz {resident_rec['name']} bo'yicha)\n"
+    try:
+        await context.bot.send_message(target, prefix + text, parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
 
 
 async def _mark(query, suffix: str) -> None:
@@ -699,9 +852,105 @@ async def show_rules_fines(update, context) -> None:
     rows = await db.get_user_fine_details(update.effective_user.id)
     details = [(r["reason"], r["amount"], fmt_short(r["fine_date"])) for r in rows]
     total = sum(r["amount"] for r in rows)
+    kb = None
+    if rows:
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(texts.BTN_PAY, callback_data="pay")]])
     await update.message.reply_text(
-        texts.rules_and_fines(texts.rules_text(), details, total), parse_mode=ParseMode.HTML
+        texts.rules_and_fines(texts.rules_text(), details, total),
+        parse_mode=ParseMode.HTML, reply_markup=kb,
     )
+
+
+async def on_pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    cnt, total = await db.get_user_fines(query.from_user.id)
+    if cnt == 0:
+        await query.edit_message_text(texts.PAY_NO_FINE)
+        return
+    context.user_data["awaiting"] = "payment"
+    context.user_data["pay_amount"] = total
+    await query.message.reply_text(texts.PAY_ASK, parse_mode=ParseMode.HTML)
+
+
+async def on_payment_media(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """awaiting=='payment' bo'lsa chek (rasm/fayl/video) qabul qilinadi."""
+    if context.user_data.get("awaiting") != "payment":
+        return
+    msg = update.message
+    if msg.photo:
+        file_id, file_type = msg.photo[-1].file_id, "photo"
+    elif msg.document:
+        file_id, file_type = msg.document.file_id, "document"
+    elif msg.video:
+        file_id, file_type = msg.video.file_id, "video"
+    else:
+        return
+    context.user_data.pop("awaiting", None)
+    amount = context.user_data.pop("pay_amount", 0)
+    uid = update.effective_user.id
+    resident = await db.get_resident(uid)
+    pid = await db.add_payment(uid, file_id, file_type, amount)
+    await msg.reply_text(texts.PAY_RECEIVED, parse_mode=ParseMode.HTML)
+    cap = (f"💳 <b>To'lov cheki</b>\n👤 {resident['name'] if resident else uid}\n"
+           f"Jarima: {fmt_sum(amount)} so'm\n\nTasdiqlaysizmi?")
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"pok:{pid}"),
+        InlineKeyboardButton("❌ Rad etish", callback_data=f"pno:{pid}"),
+    ]])
+    for admin_id in ADMIN_IDS:
+        try:
+            if file_type == "photo":
+                await context.bot.send_photo(admin_id, file_id, caption=cap,
+                                             parse_mode=ParseMode.HTML, reply_markup=kb)
+            elif file_type == "document":
+                await context.bot.send_document(admin_id, file_id, caption=cap,
+                                                parse_mode=ParseMode.HTML, reply_markup=kb)
+            else:
+                await context.bot.send_video(admin_id, file_id, caption=cap,
+                                             parse_mode=ParseMode.HTML, reply_markup=kb)
+        except Exception as e:
+            logger.warning("Adminga chek yuborilmadi %s: %s", admin_id, e)
+
+
+async def on_payment_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    action, pid_str = query.data.split(":")
+    payment = await db.get_payment(int(pid_str))
+    if not payment:
+        await query.answer("To'lov topilmadi.", show_alert=True)
+        return
+    uid = payment["telegram_id"]
+    resident = await db.get_resident(uid)
+    if action == "pok":
+        await db.set_payment_status(payment["id"], "approved")
+        await db.clear_user_active_fines(uid)
+        await query.answer("Tasdiqlandi ✅")
+        await _mark(query, "✅ <b>To'lov tasdiqlandi</b>")
+        try:
+            await context.bot.send_message(uid, texts.PAY_APPROVED, parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+        # Guruhga e'lon
+        gid = await db.get_setting("group_chat_id")
+        if gid and resident:
+            try:
+                await context.bot.send_message(
+                    int(gid), texts.group_paid_announce(mention(uid, resident["name"])),
+                    parse_mode=ParseMode.HTML)
+            except Exception:
+                pass
+    else:
+        await db.set_payment_status(payment["id"], "rejected")
+        await query.answer("Rad etildi")
+        await _mark(query, "❌ <b>To'lov rad etildi</b>")
+        try:
+            await context.bot.send_message(uid, texts.PAY_REJECTED, parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
 
 
 # =================== Viloyat ===================
@@ -930,6 +1179,7 @@ async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton(texts.AP_FINES, callback_data="ap:fines")],
         [InlineKeyboardButton(texts.AP_PENDING, callback_data="ap:pending")],
         [InlineKeyboardButton(texts.AP_REMOVE, callback_data="ap:remove")],
+        [InlineKeyboardButton(texts.AP_ADD_PROXY, callback_data="ap:addproxy")],
     ])
     await update.message.reply_text(texts.ADMIN_PANEL_TITLE, parse_mode=ParseMode.HTML,
                                     reply_markup=kb)
@@ -968,6 +1218,27 @@ async def on_admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 for r in members]
         await query.message.reply_text("Kimni chiqaramiz? 👇",
                                        reply_markup=InlineKeyboardMarkup(rows))
+    elif what == "addproxy":
+        context.user_data["awaiting"] = "proxy_name"
+        await query.message.reply_text(texts.ADD_PROXY_ASK_NAME)
+
+
+async def on_pick_manager(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    await query.answer()
+    manager_uid = int(query.data.split(":")[1])
+    name = context.user_data.pop("proxy_name", None)
+    if not name:
+        await query.edit_message_text("Ism topilmadi, qaytadan urinib ko'ring.")
+        return
+    manager = await db.get_resident(manager_uid)
+    await db.create_proxy_member(name, manager_uid)
+    await query.edit_message_text(
+        texts.proxy_added(name, manager["name"] if manager else str(manager_uid)),
+        parse_mode=ParseMode.HTML)
 
 
 async def cmd_arizalar_from(query, context) -> None:
@@ -1085,32 +1356,53 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     today = today_local()
     if not rotation.before_start(today) and rotation.is_cycle_start(today):
         ids = await available_ids(today)
+        residents_all = await db.get_active_residents()
+        rec_by = {r["telegram_id"]: r for r in residents_all}
         forced = await db.get_all_forced()
-        mapping = assign_with_forced(ids, rotation.cycle_index(today), forced)
+        debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
+        mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt)
         deadline = today + dt.timedelta(days=1)
-        name_by = {r["telegram_id"]: r["name"] for r in await db.get_active_residents()}
+        name_by = {r["telegram_id"]: r["name"] for r in residents_all}
         task_to_uid: dict[str, int] = {}
         for uid, task in mapping.items():
             if not task:
                 continue
             task_to_uid[task] = uid
             await db.create_assignment(uid, today, task)
-            try:
-                await context.bot.send_message(
-                    uid,
-                    f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
-                    f"🧹 Vazifangiz: <b>{task}</b>\n"
-                    f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
-                    + texts.task_details(task) + texts.TASK_NOTE,
-                    parse_mode=ParseMode.HTML)
-            except Exception as e:
-                logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
+            rec = rec_by.get(uid)
+            # Navbatchilik qarzi bo'lsa — kamaytirib, izoh qo'shamiz
+            note = texts.TASK_NOTE
+            if rec and rec["duty_debt"] > 0:
+                await db.incr_duty_debt(uid, -1)
+                note += texts.penalty_note(rec["duty_debt"] - 1)
+            details = texts.task_details(task)
+            if rec and rec["proxy_uid"]:
+                # Telefonsiz a'zo — boshqaruvchisiga yuboramiz
+                try:
+                    await context.bot.send_message(
+                        rec["proxy_uid"],
+                        texts.proxy_assign_msg(name_by.get(rec["proxy_uid"], ""), rec["name"],
+                                               task, fmt_short(deadline), details, note),
+                        parse_mode=ParseMode.HTML)
+                except Exception as e:
+                    logger.warning("Proxy xabari yuborilmadi: %s", e)
+            else:
+                try:
+                    await context.bot.send_message(
+                        uid,
+                        f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
+                        f"🧹 Vazifangiz: <b>{task}</b>\n"
+                        f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
+                        + details + note,
+                        parse_mode=ParseMode.HTML)
+                except Exception as e:
+                    logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
         # Qo'llanilgan forced'larni tozalash
         for uid in forced:
             if uid in ids:
                 await db.set_forced_task(uid, None)
-        # Guruhga e'lon (har bir kishini belgilab)
-        await announce_to_group(context, today, deadline, task_to_uid, name_by)
+        # Guruhga e'lon (proxy bo'lsa boshqaruvchisini belgilaymiz)
+        await announce_to_group(context, today, deadline, task_to_uid, name_by, rec_by)
     # Qaytish so'rovlari
     for r in await db.get_residents_returning_on(today):
         try:
@@ -1172,33 +1464,53 @@ async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """05:00: vazifa berilgan kunning ertasi — hisobot bermaganlarga tozalik jarimasi.
+    """05:00: tozalik jarimalari.
 
-    Vazifa sikl boshida beriladi, hisobot ertasi kun 05:00 gacha kerak.
+    - Vazifa sikl boshida (kun S) beriladi, hisobot S+1 05:00 gacha.
+    - S+1 da bajarmasa: jarima + navbatchilik qarzi (+2) + yana 24 soat muhlat.
+    - S+2 da yana bajarmasa: yana jarima.
     Eshik/oshxona/dush uchun avtomatik jarima yo'q — admin qo'lda yozadi.
     """
     today = today_local()
-    yesterday = today - dt.timedelta(days=1)
+    gid = await db.get_setting("group_chat_id")
 
-    # Kecha vazifa berilgan bo'lsa (sikl boshi), bugun 05:00 da tekshiramiz
-    if rotation.before_start(yesterday) or not rotation.is_cycle_start(yesterday):
-        return
-    for a in await db.get_cycle_assignments(yesterday):
-        if a["status"] not in ("assigned",):
+    # base = vazifa berilgan kun (sikl boshi). today = base+1 (1-muddat) yoki base+2 (qo'shimcha 24h)
+    for delta, first in ((1, True), (2, False)):
+        base = today - dt.timedelta(days=delta)
+        if rotation.before_start(base) or not rotation.is_cycle_start(base):
             continue
-        await db.set_assignment_status(a["id"], "missed")
-        uid = a["telegram_id"]
-        if await db.has_fine(uid, yesterday, "cleaning"):
-            continue
-        await db.add_fine(uid, a["id"], FINE_AMOUNT,
-                          f"Tozalik vazifasi bajarilmadi ({a['areas']})", yesterday, "cleaning")
-        try:
-            await context.bot.send_message(
-                uid, texts.fine_summary_msg(
-                    [(f"Tozalik: {a['areas']}", FINE_AMOUNT)], FINE_AMOUNT),
-                parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
+        for a in await db.get_cycle_assignments(base):
+            if a["status"] not in ("assigned", "missed"):
+                continue  # reported/approved — jarima yo'q
+            uid = a["telegram_id"]
+            await db.set_assignment_status(a["id"], "missed")
+            if await db.has_fine(uid, today, "cleaning"):
+                continue
+            await db.add_fine(uid, a["id"], FINE_AMOUNT,
+                              f"Tozalik vazifasi bajarilmadi ({a['areas']})", today, "cleaning")
+            note = ""
+            if first:
+                await db.incr_duty_debt(uid, 2)
+                note = texts.penalty_note(2) + "\n⏳ Yana 24 soat muhlat berildi."
+            rec = await db.get_resident(uid)
+            await notify_subject(
+                context, rec,
+                texts.fine_summary_msg([(f"Tozalik: {a['areas']}", FINE_AMOUNT)], FINE_AMOUNT) + note)
+            # Guruhga e'lon (proxy bo'lsa boshqaruvchini belgilaymiz)
+            if gid and rec:
+                tag_uid = rec["proxy_uid"] or uid
+                nm = rec["name"]
+                if rec["proxy_uid"]:
+                    mgr = await db.get_resident(rec["proxy_uid"])
+                    tag = mention(tag_uid, mgr["name"] if mgr else "") + f" (ukasi {html_escape(nm)})"
+                else:
+                    tag = mention(uid, nm)
+                try:
+                    await context.bot.send_message(
+                        int(gid), texts.group_fine_announce(tag, a["areas"], FINE_AMOUNT),
+                        parse_mode=ParseMode.HTML)
+                except Exception:
+                    pass
 
 
 # =================== Ishga tushirish ===================
@@ -1282,7 +1594,8 @@ def main() -> None:
 
     app.add_handler(CallbackQueryHandler(on_user_review, pattern=r"^u(ok|no):"))
     app.add_handler(CallbackQueryHandler(on_report_review, pattern=r"^r(ok|no):"))
-    app.add_handler(CallbackQueryHandler(on_report_button, pattern=r"^rep:"))
+    app.add_handler(CallbackQueryHandler(on_checklist_toggle, pattern=r"^ck:"))
+    app.add_handler(CallbackQueryHandler(on_report_button, pattern=r"^repx?:"))
     app.add_handler(CallbackQueryHandler(on_return_buttons, pattern=r"^back:"))
     app.add_handler(CallbackQueryHandler(show_residents_week, pattern=r"^res7$"))
     app.add_handler(CallbackQueryHandler(show_task_distribution, pattern=r"^restasks$"))
@@ -1294,6 +1607,9 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_remove_confirm, pattern=r"^rem(y:|n$)"))
     app.add_handler(CallbackQueryHandler(on_remove_member, pattern=r"^rem:"))
     app.add_handler(CallbackQueryHandler(on_reopen_task, pattern=r"^reopen:"))
+    app.add_handler(CallbackQueryHandler(on_pick_manager, pattern=r"^mp:"))
+    app.add_handler(CallbackQueryHandler(on_pay_start, pattern=r"^pay$"))
+    app.add_handler(CallbackQueryHandler(on_payment_review, pattern=r"^p(ok|no):"))
 
     app.add_handler(CommandHandler("id", cmd_id))
     app.add_handler(CommandHandler("help", cmd_help))
@@ -1307,6 +1623,7 @@ def main() -> None:
     app.add_handler(CommandHandler("admin", cmd_admin))
     app.add_handler(CommandHandler("eslat", cmd_eslat))
 
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, on_payment_media))
     app.add_handler(MessageHandler(filters.VIDEO | filters.VIDEO_NOTE, on_video))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 

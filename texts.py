@@ -194,7 +194,14 @@ SEND_VIDEO_NOW = "📹 Endi shu hisobot uchun <b>video</b> yuboring 👇"
 
 # Tugmaga qarab qo'shimcha izoh
 SEND_VIDEO_EXTRA = {
-    "task": "Bu yerga 3 kunda bir marta sizga berilgan vazifani yuborasiz.",
+    "task": ("Bu yerga 3 kunda bir marta sizga berilgan vazifani yuborasiz.\n"
+             "Berilgan joyning HAMMA qismini ro'yxat bo'yicha detalli ko'rsatib video qiling."),
+    "kitchen_used": ("Oshxonadagi hamma joyni ko'rsating — stol, gaz plita, pol va "
+                     "MUZLATKICHNI ham (ichini) ko'rsatib video qiling."),
+    "shower_after": ("Dushdagi hamma joyni detalli ko'rsating — pol, rakovina, vanna — "
+                     "toza ekanini, soch qolmaganini ko'rsating."),
+    "door_out": "Eshikni QULFLAGANINGIZNI ko'rsating (ochganini emas). Kalit 2 marta buralsin.",
+    "door_in": "Uyga kelib eshikni QULFLAGANINGIZNI ko'rsating (ochganini emas).",
 }
 
 NO_TASK_TO_REPORT = "ℹ️ Bu siklda sizga tozalik vazifasi berilmagan, lekin hisobot saqlandi."
@@ -233,6 +240,45 @@ def rules_and_fines(rules: str, details: list, total: int) -> str:
     return rules + f
 
 
+BTN_PAY = "💳 Jarimani to'lash"
+PAY_ASK = (
+    "💳 <b>Jarimani to'lash</b>\n\n"
+    "Jarima pulini <b>elektr energiyaga</b> to'lov qiling va to'lov chekining "
+    "rasmini (yoki faylini) shu yerga yuboring.\n"
+    "Admin tasdiqlagach jarimangiz o'chadi.\n\n"
+    "Bekor qilish: /bekor"
+)
+PAY_NO_FINE = "✅ Sizda faol jarima yo'q."
+PAY_RECEIVED = (
+    "✅ Chek qabul qilindi va admin tasdig'iga yuborildi.\n"
+    "Tasdiqlangach jarimangiz o'chadi."
+)
+PAY_APPROVED = "✅ <b>To'lovingiz tasdiqlandi!</b> Jarimalaringiz o'chirildi. Rahmat."
+PAY_REJECTED = (
+    "❌ To'lovingiz tasdiqlanmadi. Chek to'g'ri/aniq bo'lsa qayta yuboring yoki "
+    "admin bilan bog'laning."
+)
+
+
+def penalty_note(remaining: int) -> str:
+    return (
+        "\n\n⚠️ <b>Diqqat:</b> avvalgi vazifangizni bajarmaganingiz uchun "
+        f"jazo navbatchiligi: yana <b>{remaining} marta</b> shu vazifani bajarasiz."
+    )
+
+
+def proxy_assign_msg(manager_name: str, brother_name: str, task: str,
+                     deadline_str: str, details: str, note: str) -> str:
+    return (
+        f"🆕 <b>Yangi tozalik vazifasi (ukangiz uchun)</b>\n\n"
+        f"👤 {brother_name} (telefonsiz)\n"
+        f"🧹 Vazifa: <b>{task}</b>\n"
+        f"⏰ Muddat: <b>{deadline_str} 05:00</b>\n\n"
+        f"{details}{note}\n\n"
+        "Ukangiz bajargach, 📤 → ukangiz tugmasi orqali video yuboring."
+    )
+
+
 def all_fines_text(rows: list) -> str:
     """rows: [(name, reason, amount, date_str), ...] — barcha faol jarimalar."""
     if not rows:
@@ -257,6 +303,25 @@ AP_TASKS = "📋 Vazifalar taqsimoti"
 AP_FINES = "💸 Barcha jarimalar"
 AP_PENDING = "🆕 Arizalar"
 AP_REMOVE = "🗑 A'zoni chiqarish"
+AP_ADD_PROXY = "➕ Telefonsiz a'zo qo'shish"
+
+ADD_PROXY_ASK_NAME = "➕ Telefonsiz a'zoning ism-familiyasini yozing:"
+ADD_PROXY_PICK_MANAGER = "Bu a'zoni kim boshqaradi (kim uchun belgilansin)? 👇"
+
+
+def proxy_added(name: str, manager: str) -> str:
+    return f"✅ {name} qo'shildi. Boshqaruvchi: {manager}. Navbatga kiritildi."
+
+
+def group_fine_announce(mention_html: str, task: str, amount: int) -> str:
+    return (
+        f"⚠️ {mention_html} o'ziga berilgan <b>{task}</b> vazifasini bajarmadi — "
+        f"<b>{_sum(amount)} so'm</b> jarima yozildi."
+    )
+
+
+def group_paid_announce(mention_html: str) -> str:
+    return f"✅ {mention_html} jarimasini to'ladi (admin tasdiqladi). Rahmat! 👏"
 
 # Qo'lda jarima sabablari (100 000 so'm)
 FINE_REASONS = {
