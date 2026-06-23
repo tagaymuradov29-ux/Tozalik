@@ -1350,6 +1350,45 @@ async def cmd_eslat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("📨 Vazifalar yuborildi.")
 
 
+async def cmd_sinov(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin uchun sinov: 4 ta vazifani 'bajarildi' ko'rinishida checklist bilan yuboradi."""
+    if not is_admin(update.effective_user.id):
+        return
+    await update.message.reply_text(
+        "🧪 <b>Sinov rejimi.</b> Quyida 4 ta vazifa 'bajarildi' deb keldi. "
+        "Bandlarni belgilab, Tasdiqlash/Rad etishni sinab ko'ring (haqiqiy jarima yozilmaydi).",
+        parse_mode=ParseMode.HTML)
+    for i, task in enumerate(texts.TASKS):
+        rid = 900000 + i
+        context.bot_data[f"task:{rid}"] = task
+        context.bot_data[f"ck:{rid}"] = set()
+        rows = [[InlineKeyboardButton(f"⬜️ {it[:45]}", callback_data=f"ck:{rid}:{j}")]
+                for j, it in enumerate(task_items(task))]
+        rows.append([
+            InlineKeyboardButton("✅ Tasdiqlash", callback_data=f"tok:{rid}"),
+            InlineKeyboardButton("❌ Rad etish", callback_data=f"tno:{rid}"),
+        ])
+        cap = (f"📹 <b>SINOV — Falonchi</b>\n🧹 {task}\n🗓 (sinov)\n\n"
+               "📋 <b>Tekshiring (belgilang):</b>")
+        await update.message.reply_text(cap, parse_mode=ParseMode.HTML,
+                                        reply_markup=InlineKeyboardMarkup(rows))
+
+
+async def on_test_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not is_admin(query.from_user.id):
+        await query.answer("Faqat admin uchun.", show_alert=True)
+        return
+    res = "✅ <b>Tasdiqlandi</b>" if query.data.startswith("tok") else "❌ <b>Rad etildi</b>"
+    await query.answer("Sinov")
+    try:
+        await query.edit_message_text(
+            query.message.text_html + f"\n\n{res} (sinov — haqiqiy jarima yo'q)",
+            parse_mode=ParseMode.HTML)
+    except Exception:
+        await query.edit_message_reply_markup(reply_markup=None)
+
+
 # =================== Jadval (JobQueue) ===================
 async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Ertalab: yangi sikl boshlansa vazifa tarqatish + qaytish so'rovlari."""
@@ -1610,6 +1649,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_pick_manager, pattern=r"^mp:"))
     app.add_handler(CallbackQueryHandler(on_pay_start, pattern=r"^pay$"))
     app.add_handler(CallbackQueryHandler(on_payment_review, pattern=r"^p(ok|no):"))
+    app.add_handler(CallbackQueryHandler(on_test_review, pattern=r"^t(ok|no):"))
 
     app.add_handler(CommandHandler("id", cmd_id))
     app.add_handler(CommandHandler("help", cmd_help))
@@ -1622,6 +1662,7 @@ def main() -> None:
     app.add_handler(CommandHandler("guruh", cmd_guruh))
     app.add_handler(CommandHandler("admin", cmd_admin))
     app.add_handler(CommandHandler("eslat", cmd_eslat))
+    app.add_handler(CommandHandler("sinov", cmd_sinov))
 
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, on_payment_media))
     app.add_handler(MessageHandler(filters.VIDEO | filters.VIDEO_NOTE, on_video))
