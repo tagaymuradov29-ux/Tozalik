@@ -347,7 +347,11 @@ async def on_report_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     cat = query.data.split(":")[1]
     context.user_data["pending_category"] = cat
     label = texts.RB_LABELS[cat]
-    await query.edit_message_text(f"{label}\n\n{texts.SEND_VIDEO_NOW}", parse_mode=ParseMode.HTML)
+    extra = texts.SEND_VIDEO_EXTRA.get(cat)
+    text = f"{label}\n\n{texts.SEND_VIDEO_NOW}"
+    if extra:
+        text += f"\n\n<i>{extra}</i>"
+    await query.edit_message_text(text, parse_mode=ParseMode.HTML)
 
 
 # =================== Video hisobot ===================

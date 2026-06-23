@@ -192,6 +192,11 @@ RB_LABELS = {
 
 SEND_VIDEO_NOW = "📹 Endi shu hisobot uchun <b>video</b> yuboring 👇"
 
+# Tugmaga qarab qo'shimcha izoh
+SEND_VIDEO_EXTRA = {
+    "task": "Bu yerga 3 kunda bir marta sizga berilgan vazifani yuborasiz.",
+}
+
 NO_TASK_TO_REPORT = "ℹ️ Bu siklda sizga tozalik vazifasi berilmagan, lekin hisobot saqlandi."
 
 
