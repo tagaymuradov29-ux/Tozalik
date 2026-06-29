@@ -48,8 +48,9 @@ def assign_cycle(resident_ids: list[int], cidx: int) -> dict[int, str | None]:
     if n == 0:
         return result
     k = min(n, len(TASKS))
+    # Faqat odamlarni cidx bo'yicha siljitamiz — shunda har sikl vazifa-odam jufti almashadi
     for j in range(k):
-        task = TASKS[(cidx + j) % len(TASKS)]
+        task = TASKS[j]
         person = resident_ids[(cidx + j) % n]
         result[person] = task
     return result

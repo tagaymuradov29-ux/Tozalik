@@ -442,6 +442,12 @@ async def clear_all_fines() -> int:
             return 0
 
 
+async def reset_all_penalties() -> None:
+    """Hammada navbatchilik qarzi va 'o'sha joy' belgilarini nolga tushiradi."""
+    async with _pool.acquire() as con:
+        await con.execute("UPDATE residents SET duty_debt=0, forced_task=NULL")
+
+
 async def clear_fine_by(telegram_id: int, fine_date: dt.date, category: str) -> int:
     async with _pool.acquire() as con:
         res = await con.execute(

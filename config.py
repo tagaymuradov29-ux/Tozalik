@@ -45,7 +45,7 @@ PRE_DEADLINE_HOUR: int = int(_get("PRE_DEADLINE_HOUR", "4"))
 DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "5"))
 
 # Tozalik navbati necha kunda almashadi
-CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "3"))
+CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "6"))
 
 # Tozalik vazifalari shu sanadan boshlab beriladi (23-iyun 2026)
 _ts = _get("TASKS_START_DATE", "2026-06-23")

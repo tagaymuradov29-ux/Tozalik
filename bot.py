@@ -129,9 +129,9 @@ def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str],
         normal_people = normal_people[shift:] + normal_people[:shift]
     free_people = debt_people + normal_people
     k = min(len(free_people), len(free_tasks))
+    # Odamlar cidx bo'yicha siljigan, vazifalar tartibi sobit — shunda navbat aylanadi
     for j in range(k):
-        task = free_tasks[(cidx + j) % len(free_tasks)]
-        result[free_people[j]] = task
+        result[free_people[j]] = free_tasks[j]
     return result
 
 
@@ -1676,6 +1676,12 @@ async def post_init(app: Application) -> None:
         n = await db.clear_all_fines()
         await db.set_setting("launch_reset_2026_06_21", "done")
         logger.info("Launch reset: %d ta eski jarima o'chirildi", n)
+    # Bir martalik: 6 kunlik tartibga o'tish — barcha jarima + navbatchilik 0 ga tushadi
+    if await db.get_setting("reset_6day_cycle") is None:
+        n = await db.clear_all_fines()
+        await db.reset_all_penalties()
+        await db.set_setting("reset_6day_cycle", "done")
+        logger.info("6-kunlik reset: %d jarima o'chirildi, navbatchilik nollandi", n)
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),
