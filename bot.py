@@ -284,6 +284,8 @@ async def ensure_cycle_assignment(telegram_id: int, cyc: dt.date) -> str | None:
 
 # =================== Reply menyu dispatcher ===================
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_chat.type != "private":
+        return  # guruhdagi yozishmalarga bot aralashmaydi
     user = update.effective_user
     text = (update.message.text or "").strip()
 
@@ -436,6 +438,8 @@ async def on_report_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 # =================== Video hisobot ===================
 async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
+    if update.effective_chat.type != "private":
+        return  # guruhdagi videolarga bot javob bermaydi
     if context.user_data.get("awaiting") == "payment":
         await on_payment_media(update, context)
         return
@@ -940,6 +944,8 @@ async def on_pay_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def on_payment_media(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """awaiting=='payment' bo'lsa chek (rasm/fayl/video) qabul qilinadi."""
+    if update.effective_chat.type != "private":
+        return
     if context.user_data.get("awaiting") != "payment":
         return
     msg = update.message
