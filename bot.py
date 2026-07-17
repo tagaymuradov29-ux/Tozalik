@@ -72,6 +72,10 @@ def today_local() -> dt.date:
     return dt.datetime.now(TZ).date()
 
 
+async def tasks_paused() -> bool:
+    return await db.get_setting("tasks_paused") is not None
+
+
 def is_away_on(resident, on_date: dt.date) -> bool:
     au = resident["away_until"] if resident else None
     return au is not None and on_date < au
@@ -330,6 +334,10 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def show_my_task(update, context, resident) -> None:
+    if await tasks_paused():
+        await update.message.reply_text(
+            "⏸ Tozalik vazifa taqsimoti hozircha to'xtatilgan.", reply_markup=main_menu(resident))
+        return
     today = today_local()
     if is_away_on(resident, today):
         await update.message.reply_text(texts.away_status(fmt_short(resident["away_until"])))
@@ -1421,6 +1429,25 @@ async def cmd_eslat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("📨 Vazifalar yuborildi.")
 
 
+async def cmd_vazifa_toxtat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update.effective_user.id):
+        return
+    await db.set_setting("tasks_paused", "1")
+    await update.message.reply_text(
+        "⏸ <b>Vazifa taqsimoti to'xtatildi.</b>\n"
+        "Yangi vazifa berilmaydi, eslatma va jarima ishlamaydi.\n"
+        "Qayta yoqish: /vazifa_yoq", parse_mode=ParseMode.HTML)
+
+
+async def cmd_vazifa_yoq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update.effective_user.id):
+        return
+    await db.set_setting("tasks_paused", None)
+    await update.message.reply_text(
+        "▶️ <b>Vazifa taqsimoti yoqildi.</b>\n"
+        "Keyingi navbat kuni (05:00) vazifalar avtomatik beriladi.", parse_mode=ParseMode.HTML)
+
+
 async def cmd_sinov(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Admin uchun sinov: 4 ta vazifani 'bajarildi' ko'rinishida checklist bilan yuboradi."""
     if not is_admin(update.effective_user.id):
@@ -1464,7 +1491,8 @@ async def on_test_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Ertalab: yangi sikl boshlansa vazifa tarqatish + qaytish so'rovlari."""
     today = today_local()
-    if not rotation.before_start(today) and rotation.is_cycle_start(today):
+    if (not await tasks_paused() and not rotation.before_start(today)
+            and rotation.is_cycle_start(today)):
         ids = await available_ids(today)
         residents_all = await db.get_active_residents()
         rec_by = {r["telegram_id"]: r for r in residents_all}
@@ -1555,6 +1583,8 @@ async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
     """04:00: muddatdan 1 soat oldin 'hisobot yuboringlar' eslatmasi."""
+    if await tasks_paused():
+        return
     today = today_local()
     yesterday = today - dt.timedelta(days=1)
     if rotation.before_start(yesterday) or not rotation.is_cycle_start(yesterday):
@@ -1577,6 +1607,8 @@ async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
     - S+2 da yana bajarmasa: yana jarima.
     Eshik/oshxona/dush uchun avtomatik jarima yo'q — admin qo'lda yozadi.
     """
+    if await tasks_paused():
+        return
     today = today_local()
     gid = await db.get_setting("group_chat_id")
 
@@ -1688,6 +1720,11 @@ async def post_init(app: Application) -> None:
         await db.reset_all_penalties()
         await db.set_setting("reset_6day_cycle", "done")
         logger.info("6-kunlik reset: %d jarima o'chirildi, navbatchilik nollandi", n)
+    # Bir martalik: vazifa taqsimotini to'xtatib qo'yish (admin /vazifa_yoq bilan yoqadi)
+    if await db.get_setting("pause_init_done") is None:
+        await db.set_setting("tasks_paused", "1")
+        await db.set_setting("pause_init_done", "done")
+        logger.info("Vazifa taqsimoti to'xtatildi (boshlang'ich).")
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),
@@ -1753,6 +1790,8 @@ def main() -> None:
     app.add_handler(CommandHandler("admin", cmd_admin))
     app.add_handler(CommandHandler("eslat", cmd_eslat))
     app.add_handler(CommandHandler("sinov", cmd_sinov))
+    app.add_handler(CommandHandler("vazifa_toxtat", cmd_vazifa_toxtat))
+    app.add_handler(CommandHandler("vazifa_yoq", cmd_vazifa_yoq))
 
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, on_payment_media))
     app.add_handler(MessageHandler(filters.VIDEO | filters.VIDEO_NOTE, on_video))
