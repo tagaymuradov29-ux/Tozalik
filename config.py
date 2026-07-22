@@ -35,14 +35,12 @@ TZ = ZoneInfo(TZ_NAME)
 
 import datetime as _dt
 
-# Yangi sikl e'lon qilinadigan soat
+# Yangi sikl e'lon qilinadigan soat (vazifa beriladigan vaqt)
 ANNOUNCE_HOUR: int = int(_get("ANNOUNCE_HOUR", "5"))
-# Eslatma soati (kechqurun)
-REMIND_HOUR: int = int(_get("REMIND_HOUR", "21"))
-# Muddatdan oldingi eslatma soati (04:00)
-PRE_DEADLINE_HOUR: int = int(_get("PRE_DEADLINE_HOUR", "4"))
-# Muddat (jarima yoziladigan) soati
-DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "5"))
+# Muddatdan oldingi eslatma soati (23:00 — muddat 23:59)
+PRE_DEADLINE_HOUR: int = int(_get("PRE_DEADLINE_HOUR", "23"))
+# Jarima tekshiriladigan soat (00:00 — 23:59 muddatidan keyin)
+DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "0"))
 
 # Tozalik navbati necha kunda almashadi (har hafta)
 CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))
@@ -60,7 +58,7 @@ INITIAL_ORDER: list[str] = [
 ]
 
 # --- Jarima (so'm) ---
-FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "100000"))  # tozalik vazifasi (to'liq)
+FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "500000"))  # tozalik vazifasi (to'liq)
 # Eshik qulflash: ikkalasi (chiqish+kirish) bajarilmasa / bittasi bajarilmasa
 DOOR_FINE_FULL: int = int(_get("DOOR_FINE_FULL", "100000"))
 DOOR_FINE_PARTIAL: int = int(_get("DOOR_FINE_PARTIAL", "80000"))

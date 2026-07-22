@@ -38,7 +38,6 @@ from config import (
     FINE_AMOUNT,
     INITIAL_ORDER,
     PRE_DEADLINE_HOUR,
-    REMIND_HOUR,
     TZ,
     is_admin,
 )
@@ -557,10 +556,7 @@ async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by
     gid = await db.get_setting("group_chat_id")
     if not gid:
         return
-    lines = [
-        f"📋 <b>Yangi tozalik navbati</b> ({fmt_short(cycle_start)})\n"
-        f"Har bir joyni kim tozalaydi va nima qilishi kerak:\n",
-    ]
+    entries = []
     for task in texts.TASKS:
         uid = task_to_uid.get(task)
         if not uid:
@@ -569,15 +565,14 @@ async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by
             rec = rec_by.get(uid)
             if rec and rec["proxy_uid"]:
                 who = (mention(rec["proxy_uid"], name_by.get(rec["proxy_uid"], "")) +
-                       f" (ukasi {html_escape(rec['name'])} qilishi kerak)")
+                       f" (ukasi {html_escape(rec['name'])})")
             else:
                 who = mention(uid, name_by.get(uid, "—"))
-        lines.append(f"\n{task} → {who}")
-        lines.append(texts.task_details(task))
-    lines.append(f"\n⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.")
-    lines.append("Har kim o'z joyini tozalab, botga 📤 orqali video yuborsin.")
+        entries.append((who, task, texts.task_details(task)))
+    dl_str = f"{deadline.day:02d}.{deadline.month:02d}.{deadline.year} 23:59"
+    text = texts.group_announce_full(dl_str, entries, texts.GROUP_NOTE)
     try:
-        await context.bot.send_message(int(gid), "\n".join(lines), parse_mode=ParseMode.HTML)
+        await context.bot.send_message(int(gid), text, parse_mode=ParseMode.HTML)
     except Exception as e:
         logger.warning("Guruhga e'lon yuborilmadi: %s", e)
 
@@ -1501,7 +1496,7 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                   if r["forced_task"] and r["duty_debt"] > 0}
         debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
         mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt)
-        deadline = today + dt.timedelta(days=1)
+        deadline = today  # o'sha kuni 23:59 gacha
         name_by = {r["telegram_id"]: r["name"] for r in residents_all}
         task_to_uid: dict[str, int] = {}
         for uid, task in mapping.items():
@@ -1535,7 +1530,7 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                         uid,
                         f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
                         f"🧹 Vazifangiz: <b>{task}</b>\n"
-                        f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
+                        f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 23:59</b> gacha.\n\n"
                         + details + note,
                         parse_mode=ParseMode.HTML)
                 except Exception as e:
@@ -1582,14 +1577,16 @@ async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """04:00: muddatdan 1 soat oldin 'hisobot yuboringlar' eslatmasi."""
+    """23:00: muddatdan (23:59) 1 soat oldin 'hisobot yuboringlar' eslatmasi.
+
+    Vazifa o'sha kuni ertalab berilib, o'sha kuni 23:59 gacha bajariladi.
+    """
     if await tasks_paused():
         return
     today = today_local()
-    yesterday = today - dt.timedelta(days=1)
-    if rotation.before_start(yesterday) or not rotation.is_cycle_start(yesterday):
+    if rotation.before_start(today) or not rotation.is_cycle_start(today):
         return
-    for a in await db.get_cycle_assignments(yesterday):
+    for a in await db.get_cycle_assignments(today):
         if a["status"] not in ("assigned",):
             continue
         rec = await db.get_resident(a["telegram_id"])
@@ -1806,7 +1803,6 @@ def main() -> None:
 
     jq = app.job_queue
     jq.run_daily(job_morning, time=dt.time(hour=ANNOUNCE_HOUR, minute=0, tzinfo=TZ))
-    jq.run_daily(job_remind, time=dt.time(hour=REMIND_HOUR, minute=0, tzinfo=TZ))
     jq.run_daily(job_predeadline, time=dt.time(hour=PRE_DEADLINE_HOUR, minute=0, tzinfo=TZ))
     jq.run_daily(job_deadline, time=dt.time(hour=DEADLINE_HOUR, minute=0, tzinfo=TZ))
 

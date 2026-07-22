@@ -1,6 +1,9 @@
 """Botning barcha o'zbekcha matnlari, menyu va vazifa nomlari."""
 from config import FINE_AMOUNT, HOUSE_SIZE, CYCLE_DAYS
 
+# Jarima summasi matni, masalan "500 000"
+FA = f"{FINE_AMOUNT:,}".replace(",", " ")
+
 # Haftalik siklda aylanadigan vazifalar (har biri bitta odamga)
 TASKS = [
     "🍳 Oshxona",
@@ -50,11 +53,9 @@ def rules_text() -> str:
         "➖➖➖➖➖➖➖➖➖➖\n"
         f"Kvartirada bir necha kishi yashaydi. Quyidagi vazifalar <b>{CYCLE_DAYS} "
         "kunda bir marta</b> navbat bilan almashadi (har kishiga bittadan):\n"
-        "🍳 Oshxona · 🚽 Hojatxona+Koridor · 🚿 Dush · 🗑 Musor\n\n"
+        "🍳 Oshxona · 🚽 Hojatxona+Koridor · 🚿 Dush+Musor\n\n"
         "🧹 <b>1. Tozalik vazifasi</b>\n"
-        f"Vazifalar {CYCLE_DAYS} kunda bir marta navbat bilan beriladi. Berilgan "
-        "vazifani bajarish uchun <b>24 soat</b> vaqt bor: masalan 23-iyun 05:00 da "
-        "berilsa, <b>24-iyun 05:00</b> gacha tozalab video hisobot yuborasiz. "
+        "Vazifa berilgan kuni <b>23:59 gacha</b> tozalab video hisobot yuborasiz. "
         "Vaqtida bajarmaganlarga jarima. Dush: hamma joy toza, sochlar qolmagan "
         "bo'lishi shart.\n\n"
         "🚪 <b>2. Eshik</b>\n"
@@ -62,8 +63,8 @@ def rules_text() -> str:
         "🍳 <b>3. Oshxona / 🚿 Dush (foydalansangiz)</b>\n"
         "Oshxonadan foydalanib tozalagan video; dushdan keyin \"o'zimdan keyin "
         "tozaladim\" video.\n\n"
-        "⚠️ Oshxona, dush yoki eshikdan foydalanib hisobot yubormaganni admin ko'rib "
-        "<b>100 000 so'm</b> jarima yozadi.\n\n"
+        f"⚠️ Oshxona, dush yoki eshikdan foydalanib hisobot yubormaganni admin ko'rib "
+        f"<b>{FA} so'm</b> jarima yozadi.\n\n"
         "✈️ <b>4. Viloyat</b>\n"
         "Viloyatga ketsangiz tugmani bosib, qaytish sanasini belgilang — o'sha "
         "kungacha vazifa berilmaydi, jarima yozilmaydi.\n"
@@ -164,7 +165,38 @@ TASK_NOTE = (
     "Hamma joy toza bo'lishi shart. Chala tozalansa — qayta tozalaysiz va "
     "<b>keyingi safar ham o'sha joy sizga beriladi</b>!\n"
     "Shuning uchun bir martada toza qiling.\n"
-    "⏰ Vaqtida bajarmasangiz — <b>100 000 so'm</b> jarima."
+    f"⏰ Vaqtida bajarmasangiz — <b>{FA} so'm</b> jarima."
+)
+
+
+def group_announce_full(deadline_str: str, entries: list, note: str) -> str:
+    """Guruh e'loni: muddat + har bir odam 'Ism | Vazifa' + batafsil + note + '+qoldiring'.
+    entries: [(mention_html, task, details_text), ...]
+    """
+    lines = [
+        f"🧹 <b>{deadline_str} gacha</b> tozalash kerak. "
+        f"Tozalanmagan bo'lsa <b>{FA} so'm</b>dan jarima olinadi.\n"
+    ]
+    for i, (who, task, details) in enumerate(entries):
+        if i:
+            lines.append("➖➖➖➖➖➖➖➖➖➖")
+        lines.append(f"\n{who} | <b>{task}</b>")
+        lines.append(details)
+    lines.append("\n" + note)
+    lines.append(
+        f"\n⏰ Agar ish vaqtida bajarilmasa <b>{FA} so'm</b> jarima!\n\n"
+        "Aytilgan barcha shartlar tushunarli va rozi bo'lsangiz \"+\" qoldiring!"
+    )
+    return "\n".join(lines)
+
+
+# Guruh e'loni oxiridagi eslatma bloki (task_details'siz, faqat matn)
+GROUP_NOTE = (
+    "❗️ <b>Eslatma:</b> Musorlarni eshik oldiga chiqarib qo'ymang. "
+    "Yig'ib olib, musorga tashlab keling!!!\n"
+    "Hamma joy toza bo'lishi shart, chala tozalansa qayta tozalanadi! "
+    "Va keyingi safar ham o'sha joyni o'zi tozalaydi.\n"
+    "Shuning uchun bir martada toza qilib qo'ying!"
 )
 
 
@@ -253,7 +285,7 @@ def reject_checklist_msg(task: str, done: list, notdone: list, deadline_str: str
     if notdone:
         lines.append("\n❌ <b>Bajarilmagan — qayta bajaring:</b>")
         lines += [f"• {x}" for x in notdone]
-    lines.append(f"\n⏰ <b>{deadline_str} 05:00</b> gacha qayta bajarib, video yuboring.")
+    lines.append(f"\n⏰ <b>{deadline_str} 23:59</b> gacha qayta bajarib, video yuboring.")
     lines.append("⚠️ Chala bajarganingiz uchun jarima sifatida <b>+1 navbatchilik</b> qo'shildi "
                  "(keyingi siklda ham shu joy sizga beriladi).")
     return "\n".join(lines)
@@ -297,11 +329,11 @@ PAY_REJECTED = (
 
 def predeadline_msg(task: str, details: str) -> str:
     return (
-        "⏰ <b>1 soat qoldi!</b> Soat <b>05:00</b> gacha hisobot yuborishingiz shart.\n\n"
+        "⏰ <b>1 soat qoldi!</b> Soat <b>23:59</b> gacha hisobot yuborishingiz shart.\n\n"
         f"🧹 Vazifangiz: <b>{task}</b>\n\n"
         f"{details}\n\n"
         "Hammasini to'liq bajarib, 📤 → 🧹 Tozalik vazifamni bajardim orqali video yuboring.\n\n"
-        "❗️ Vaqtida bajarmasangiz: <b>100 000 so'm</b> jarima + <b>+2 navbatchilik</b> "
+        f"❗️ Vaqtida bajarmasangiz: <b>{FA} so'm</b> jarima + <b>+2 navbatchilik</b> "
         "qo'shiladi va keyingi siklda ham shu joy sizga beriladi."
     )
 
@@ -327,7 +359,7 @@ def proxy_assign_msg(manager_name: str, brother_name: str, task: str,
         f"🆕 <b>Yangi tozalik vazifasi (ukangiz uchun)</b>\n\n"
         f"👤 {brother_name} (telefonsiz)\n"
         f"🧹 Vazifa: <b>{task}</b>\n"
-        f"⏰ Muddat: <b>{deadline_str} 05:00</b>\n\n"
+        f"⏰ Muddat: <b>{deadline_str} 23:59</b>\n\n"
         f"{details}{note}\n\n"
         "Ukangiz bajargach, 📤 → ukangiz tugmasi orqali video yuboring."
     )
@@ -380,7 +412,7 @@ def group_paid_announce(mention_html: str) -> str:
 
 def group_summary(date_str: str, done: list, notdone: list) -> str:
     """done: [(mention, task)], notdone: [(mention, task, amount)]"""
-    lines = [f"🕔 <b>05:00 — Tozalik natijasi ({date_str})</b>\n"]
+    lines = [f"🕔 <b>Tozalik natijasi ({date_str})</b>\n"]
     if done:
         lines.append("✅ <b>Vazifasini bajarganlar:</b>")
         for m, t in done:
@@ -402,8 +434,8 @@ FINE_REASONS = {
 }
 
 AP_PICK_MEMBER = "Kimga jarima yozasiz? 👇"
-AP_PICK_REASON = "Sabab tanlang (100 000 so'm) 👇"
-AP_CUSTOM_ASK = "Sabab va summani yozing. Masalan: <code>Tartibsizlik 50000</code>\nFaqat sabab yozsangiz 100 000 so'm bo'ladi."
+AP_PICK_REASON = f"Sabab tanlang ({FA} so'm) 👇"
+AP_CUSTOM_ASK = f"Sabab va summani yozing. Masalan: <code>Tartibsizlik 50000</code>\nFaqat sabab yozsangiz {FA} so'm bo'ladi."
 
 
 def task_distribution(cycle_str: str, mapping: list) -> str:
