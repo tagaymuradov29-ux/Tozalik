@@ -44,19 +44,18 @@ PRE_DEADLINE_HOUR: int = int(_get("PRE_DEADLINE_HOUR", "4"))
 # Muddat (jarima yoziladigan) soati
 DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "5"))
 
-# Tozalik navbati necha kunda almashadi
-CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "6"))
+# Tozalik navbati necha kunda almashadi (har hafta)
+CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))
 
-# Tozalik vazifalari shu sanadan boshlab beriladi (23-iyun 2026)
-_ts = _get("TASKS_START_DATE", "2026-06-23")
+# Tozalik vazifalari shu sanadan boshlab beriladi (23-iyul 2026)
+_ts = _get("TASKS_START_DATE", "2026-07-23")
 TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
-# Boshlang'ich navbat tartibi (1-sikl, 23-iyun shu ketma-ketlikda):
-# Oshxona, Hojatxona+Koridor, Dush, Musor — shu tartibda.
-# Ismlar ro'yxatdagi ism bilan moslashtiriladi (qism bo'yicha).
+# Boshlang'ich navbat tartibi (1-hafta shu ketma-ketlikda):
+# Oshxona, Hojatxona+Koridor, Dush+Musor — shu tartibda.
 INITIAL_ORDER: list[str] = [
     x.strip() for x in _get(
-        "INITIAL_ORDER", "Rustam, Shaxzod Asadjonov, Bunyod, Mirjon"
+        "INITIAL_ORDER", "Shahzod Tog'ayimurodov, Bunyod, Jamshid"
     ).split(",") if x.strip()
 ]
 

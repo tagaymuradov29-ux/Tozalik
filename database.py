@@ -137,6 +137,21 @@ async def upsert_pending_resident(telegram_id: int, name: str, phone: str) -> No
         )
 
 
+async def ensure_active_resident(telegram_id: int, name: str) -> None:
+    """A'zoni ID bo'yicha qo'shadi/faollashtiradi (admin qo'lda qo'shishi uchun)."""
+    async with _pool.acquire() as con:
+        await con.execute(
+            """
+            INSERT INTO residents (telegram_id, name, phone, status, approved_at)
+            VALUES ($1, $2, '', 'active', now())
+            ON CONFLICT (telegram_id) DO UPDATE
+              SET status='active', approved_at=COALESCE(residents.approved_at, now()),
+                  name=CASE WHEN residents.name='' OR residents.name IS NULL THEN EXCLUDED.name ELSE residents.name END;
+            """,
+            telegram_id, name,
+        )
+
+
 async def get_resident(telegram_id: int) -> asyncpg.Record | None:
     async with _pool.acquire() as con:
         return await con.fetchrow("SELECT * FROM residents WHERE telegram_id = $1", telegram_id)

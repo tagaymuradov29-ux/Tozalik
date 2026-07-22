@@ -102,9 +102,8 @@ def _order_index(name: str) -> tuple:
 
 
 async def available_ids(on_date: dt.date) -> list[int]:
-    """Faol, viloyatda emas va admin bo'lmagan a'zolar — boshlang'ich tartibda."""
-    residents = [r for r in await db.get_available_residents(on_date)
-                 if not is_admin(r["telegram_id"])]
+    """Faol va viloyatda bo'lmagan a'zolar — boshlang'ich tartibda (admin ham qatnashadi)."""
+    residents = list(await db.get_available_residents(on_date))
     residents.sort(key=lambda r: _order_index(r["name"]) + (r["telegram_id"],))
     return [r["telegram_id"] for r in residents]
 
@@ -559,7 +558,8 @@ async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by
     if not gid:
         return
     lines = [
-        f"📋 <b>Yangi tozalik navbati</b> ({fmt_short(cycle_start)})\n",
+        f"📋 <b>Yangi tozalik navbati</b> ({fmt_short(cycle_start)})\n"
+        f"Har bir joyni kim tozalaydi va nima qilishi kerak:\n",
     ]
     for task in texts.TASKS:
         uid = task_to_uid.get(task)
@@ -568,14 +568,14 @@ async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by
         else:
             rec = rec_by.get(uid)
             if rec and rec["proxy_uid"]:
-                # Telefonsiz a'zo — boshqaruvchini belgilaymiz
                 who = (mention(rec["proxy_uid"], name_by.get(rec["proxy_uid"], "")) +
                        f" (ukasi {html_escape(rec['name'])} qilishi kerak)")
             else:
                 who = mention(uid, name_by.get(uid, "—"))
-        lines.append(f"{task} → {who}")
+        lines.append(f"\n{task} → {who}")
+        lines.append(texts.task_details(task))
     lines.append(f"\n⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.")
-    lines.append("Tozalab, botga 📤 orqali video yuboring.")
+    lines.append("Har kim o'z joyini tozalab, botga 📤 orqali video yuborsin.")
     try:
         await context.bot.send_message(int(gid), "\n".join(lines), parse_mode=ParseMode.HTML)
     except Exception as e:
@@ -752,7 +752,7 @@ async def show_residents_today(update, context) -> None:
     today = today_local()
     cyc = rotation.cycle_start(today)
     residents = await db.get_active_residents()
-    members = [r for r in residents if not is_admin(r["telegram_id"])]
+    members = list(residents)
     if not members:
         await update.message.reply_text("Hozircha a'zolar yo'q.")
         return
@@ -908,7 +908,7 @@ async def show_residents_week(update: Update, context: ContextTypes.DEFAULT_TYPE
     today = today_local()
     start = today - dt.timedelta(days=6)
     residents = await db.get_active_residents()
-    members = [r for r in residents if not is_admin(r["telegram_id"])]
+    members = list(residents)
     lines = [f"📅 <b>So'nggi 7 kun ({fmt_short(start)} – {fmt_short(today)})</b>\n"]
     for r in members:
         rows = await db.get_extra_reports_between(r["telegram_id"], start, today)
@@ -1153,7 +1153,7 @@ async def cmd_azolar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not is_admin(update.effective_user.id):
         return
     residents = await db.get_active_residents()
-    members = [r for r in residents if not is_admin(r["telegram_id"])]
+    members = list(residents)
     if not members:
         await update.message.reply_text("Faol a'zolar yo'q.")
         return
@@ -1720,11 +1720,18 @@ async def post_init(app: Application) -> None:
         await db.reset_all_penalties()
         await db.set_setting("reset_6day_cycle", "done")
         logger.info("6-kunlik reset: %d jarima o'chirildi, navbatchilik nollandi", n)
-    # Bir martalik: vazifa taqsimotini to'xtatib qo'yish (admin /vazifa_yoq bilan yoqadi)
-    if await db.get_setting("pause_init_done") is None:
-        await db.set_setting("tasks_paused", "1")
-        await db.set_setting("pause_init_done", "done")
-        logger.info("Vazifa taqsimoti to'xtatildi (boshlang'ich).")
+    # Bir martalik: haftalik tartibga o'tish — a'zolarni qo'shish va vazifani yoqish
+    if await db.get_setting("setup_weekly_v7") is None:
+        # Adminni (Shahzod Tog'ayimurodov) va Jamshidni navbatga qo'shamiz
+        for aid in ADMIN_IDS:
+            await db.ensure_active_resident(aid, "Shahzod Tog'ayimurodov")
+        await db.ensure_active_resident(653767745, "Jamshid")
+        # Jarima + navbatchilikni tozalab, vazifani yoqamiz
+        await db.clear_all_fines()
+        await db.reset_all_penalties()
+        await db.set_setting("tasks_paused", None)
+        await db.set_setting("setup_weekly_v7", "done")
+        logger.info("Haftalik sozlash: a'zolar qo'shildi, vazifa yoqildi.")
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),

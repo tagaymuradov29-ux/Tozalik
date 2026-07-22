@@ -1,12 +1,11 @@
 """Botning barcha o'zbekcha matnlari, menyu va vazifa nomlari."""
 from config import FINE_AMOUNT, HOUSE_SIZE, CYCLE_DAYS
 
-# 3 kunlik siklda aylanadigan vazifalar (har biri bitta odamga)
+# Haftalik siklda aylanadigan vazifalar (har biri bitta odamga)
 TASKS = [
     "🍳 Oshxona",
     "🚽 Hojatxona + 🚪 Koridor",
-    "🚿 Dush",
-    "🗑 Musor (hammasini tashlab kelish)",
+    "🚿 Dush + 🗑 Musor",
 ]
 
 # Hisobot kategoriyalari (activity ko'rinishida ishlatiladi)
@@ -133,7 +132,7 @@ def my_task_msg(cycle_str: str, task: str | None, done_task: bool,
 TASK_DETAILS = {
     "🍳 Oshxona": (
         "🍳 <b>Oshxonani tozalashga nimalar kiradi:</b>\n"
-        "1. Musorlarni yig'ish va musorga olib borib tashlash\n"
+        "1. Musorni yig'ib, bir chetga olib qo'yish (dush navbatchisi tashlab keladi)\n"
         "2. Stollar ustini artib tozalash\n"
         "3. Yerga gilamlar va stol taglarini supurib tozalash\n"
         "4. Gaz plitani azelit bilan yuvish\n"
@@ -141,24 +140,21 @@ TASK_DETAILS = {
     ),
     "🚽 Hojatxona + 🚪 Koridor": (
         "🚽 <b>Hojatxona + Koridorni tozalashga nimalar kiradi:</b>\n"
-        "1. Hojatxonadagi musor idishini tozalab, yangi paket qo'yish\n"
+        "1. Hojatxona musorini yig'ib, bir chetga olib qo'yish; idishga yangi paket\n"
         "2. Unitaz cho'tkasini tozalab, idishiga xlor solib qo'yish\n"
         "3. Hojatxona polini artish\n"
         "4. Perchatka kiyib unitazni xlor bilan yuvish\n"
-        "5. Koridordagi ortiqcha oyoq-kiyimlarni musorga tashlash\n"
+        "5. Koridordagi ortiqcha oyoq-kiyimlarni yig'ishtirish\n"
         "6. Eshik changini artish"
     ),
-    "🚿 Dush": (
-        "🚿 <b>Dushni tozalashga nimalar kiradi:</b>\n"
-        "1. Dushdagi musorlarni olish, paketini almashtirish\n"
+    "🚿 Dush + 🗑 Musor": (
+        "🚿 <b>Dush + Musorni tozalashga nimalar kiradi:</b>\n"
+        "1. Dushdagi musorni olish, paketini almashtirish\n"
         "2. Dush polini artib tozalash (kir mashina orqasi bilan)\n"
         "3. Rakovinalarni tozalash\n"
-        "4. Vannani tozalash"
-    ),
-    "🗑 Musor (hammasini tashlab kelish)": (
-        "🗑 <b>Musor vazifasiga nimalar kiradi:</b>\n"
-        "1. Oshxona, hojatxona, dush — hamma joydagi musorlarni yig'ish\n"
-        "2. Hammasini musorga olib borib tashlash (eshik oldiga qo'ymang!)"
+        "4. Vannani tozalash\n"
+        "5. Dush, hojatxona, oshxona — HAMMA joyning musorini yig'ib, "
+        "bitta qilib musorga tashlab kelish"
     ),
 }
 
