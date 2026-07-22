@@ -569,7 +569,7 @@ async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by
             else:
                 who = mention(uid, name_by.get(uid, "—"))
         entries.append((who, task, texts.task_details(task)))
-    dl_str = f"{deadline.day:02d}.{deadline.month:02d}.{deadline.year} 23:59"
+    dl_str = f"{deadline.day:02d}.{deadline.month:02d}.{deadline.year} 05:00"
     text = texts.group_announce_full(dl_str, entries, texts.GROUP_NOTE)
     try:
         await context.bot.send_message(int(gid), text, parse_mode=ParseMode.HTML)
@@ -1496,7 +1496,7 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                   if r["forced_task"] and r["duty_debt"] > 0}
         debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
         mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt)
-        deadline = today  # o'sha kuni 23:59 gacha
+        deadline = today + dt.timedelta(days=1)  # ertasi kun 05:00 gacha
         name_by = {r["telegram_id"]: r["name"] for r in residents_all}
         task_to_uid: dict[str, int] = {}
         for uid, task in mapping.items():
@@ -1530,7 +1530,7 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                         uid,
                         f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
                         f"🧹 Vazifangiz: <b>{task}</b>\n"
-                        f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 23:59</b> gacha.\n\n"
+                        f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
                         + details + note,
                         parse_mode=ParseMode.HTML)
                 except Exception as e:
@@ -1577,16 +1577,17 @@ async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """23:00: muddatdan (23:59) 1 soat oldin 'hisobot yuboringlar' eslatmasi.
+    """04:00: muddatdan (ertasi kun 05:00) 1 soat oldin eslatma.
 
-    Vazifa o'sha kuni ertalab berilib, o'sha kuni 23:59 gacha bajariladi.
+    Vazifa kun D 05:00 da berilib, D+1 05:00 gacha bajariladi. Eslatma D+1 04:00 da.
     """
     if await tasks_paused():
         return
     today = today_local()
-    if rotation.before_start(today) or not rotation.is_cycle_start(today):
+    base = today - dt.timedelta(days=1)  # vazifa berilgan kun
+    if rotation.before_start(base) or not rotation.is_cycle_start(base):
         return
-    for a in await db.get_cycle_assignments(today):
+    for a in await db.get_cycle_assignments(base):
         if a["status"] not in ("assigned",):
             continue
         rec = await db.get_resident(a["telegram_id"])

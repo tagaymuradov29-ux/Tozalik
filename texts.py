@@ -55,9 +55,9 @@ def rules_text() -> str:
         "kunda bir marta</b> navbat bilan almashadi (har kishiga bittadan):\n"
         "🍳 Oshxona · 🚽 Hojatxona+Koridor · 🚿 Dush+Musor\n\n"
         "🧹 <b>1. Tozalik vazifasi</b>\n"
-        "Vazifa berilgan kuni <b>23:59 gacha</b> tozalab video hisobot yuborasiz. "
-        "Vaqtida bajarmaganlarga jarima. Dush: hamma joy toza, sochlar qolmagan "
-        "bo'lishi shart.\n\n"
+        "Vazifa 05:00 da beriladi, <b>ertasi kun 05:00 gacha</b> tozalab video "
+        "hisobot yuborasiz. Vaqtida bajarmaganlarga jarima. Dush: hamma joy toza, "
+        "sochlar qolmagan bo'lishi shart.\n\n"
         "🚪 <b>2. Eshik</b>\n"
         "Uydan chiqishda eshikni qulflagan video, uyga kelganda ham qulflagan video.\n\n"
         "🍳 <b>3. Oshxona / 🚿 Dush (foydalansangiz)</b>\n"
@@ -285,7 +285,7 @@ def reject_checklist_msg(task: str, done: list, notdone: list, deadline_str: str
     if notdone:
         lines.append("\n❌ <b>Bajarilmagan — qayta bajaring:</b>")
         lines += [f"• {x}" for x in notdone]
-    lines.append(f"\n⏰ <b>{deadline_str} 23:59</b> gacha qayta bajarib, video yuboring.")
+    lines.append(f"\n⏰ <b>{deadline_str} 05:00</b> gacha qayta bajarib, video yuboring.")
     lines.append("⚠️ Chala bajarganingiz uchun jarima sifatida <b>+1 navbatchilik</b> qo'shildi "
                  "(keyingi siklda ham shu joy sizga beriladi).")
     return "\n".join(lines)
@@ -329,7 +329,7 @@ PAY_REJECTED = (
 
 def predeadline_msg(task: str, details: str) -> str:
     return (
-        "⏰ <b>1 soat qoldi!</b> Soat <b>23:59</b> gacha hisobot yuborishingiz shart.\n\n"
+        "⏰ <b>1 soat qoldi!</b> Soat <b>05:00</b> gacha hisobot yuborishingiz shart.\n\n"
         f"🧹 Vazifangiz: <b>{task}</b>\n\n"
         f"{details}\n\n"
         "Hammasini to'liq bajarib, 📤 → 🧹 Tozalik vazifamni bajardim orqali video yuboring.\n\n"
@@ -359,7 +359,7 @@ def proxy_assign_msg(manager_name: str, brother_name: str, task: str,
         f"🆕 <b>Yangi tozalik vazifasi (ukangiz uchun)</b>\n\n"
         f"👤 {brother_name} (telefonsiz)\n"
         f"🧹 Vazifa: <b>{task}</b>\n"
-        f"⏰ Muddat: <b>{deadline_str} 23:59</b>\n\n"
+        f"⏰ Muddat: <b>{deadline_str} 05:00</b>\n\n"
         f"{details}{note}\n\n"
         "Ukangiz bajargach, 📤 → ukangiz tugmasi orqali video yuboring."
     )
