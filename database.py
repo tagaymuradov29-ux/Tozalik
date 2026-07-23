@@ -102,6 +102,8 @@ async def _create_tables() -> None:
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS duty_debt INT NOT NULL DEFAULT 0;
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS proxy_uid BIGINT;
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS return_penalty INT NOT NULL DEFAULT 0;
+            ALTER TABLE assignments ADD COLUMN IF NOT EXISTS msg_chat BIGINT;
+            ALTER TABLE assignments ADD COLUMN IF NOT EXISTS msg_id BIGINT;
             ALTER TABLE fines ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'cleaning';
             ALTER TABLE extra_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
             """
@@ -324,6 +326,14 @@ async def get_assignment(telegram_id: int, cycle_start: dt.date) -> asyncpg.Reco
         return await con.fetchrow(
             "SELECT * FROM assignments WHERE telegram_id=$1 AND task_date=$2",
             telegram_id, cycle_start,
+        )
+
+
+async def set_assignment_msg(assignment_id: int, chat: int, msg_id: int) -> None:
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE assignments SET msg_chat=$2, msg_id=$3 WHERE id=$1",
+            assignment_id, chat, msg_id,
         )
 
 

@@ -598,8 +598,12 @@ async def announce_to_group(context, cyc, reminder=False) -> None:
     period = f"{cyc.day:02d}.{cyc.month:02d} 05:00 → {dl_str}"
     text = texts.group_announce_full(dl_str, entries, texts.GROUP_NOTE,
                                      period_str=period, reminder=reminder)
+    if not reminder:
+        await _del_group_msg(context, "grp_dist_msg")  # eski taqsimotni o'chiramiz
     try:
-        await context.bot.send_message(int(gid), text, parse_mode=ParseMode.HTML)
+        m = await context.bot.send_message(int(gid), text, parse_mode=ParseMode.HTML)
+        if not reminder:
+            await db.set_setting("grp_dist_msg", f"{gid}:{m.message_id}")
     except Exception as e:
         logger.warning("Guruhga e'lon yuborilmadi: %s", e)
 
@@ -1547,7 +1551,14 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     for uid, task in mapping.items():
         if not task:
             continue
-        await db.create_assignment(uid, today, task)
+        # Eski (avvalgi) xabar bo'lsa — o'chiramiz (qayta yuborishda takror bo'lmasin)
+        prev = await db.get_assignment(uid, today)
+        if prev and prev["msg_id"]:
+            try:
+                await context.bot.delete_message(prev["msg_chat"], prev["msg_id"])
+            except Exception:
+                pass
+        aid = await db.create_assignment(uid, today, task)
         rec = rec_by.get(uid)
         note = texts.TASK_NOTE
         if rec and rec["duty_debt"] > 0:
@@ -1561,34 +1572,41 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
             note += ("\n\n✈️ Navbatingizni o'tkazganingiz uchun bu hafta "
                      "<b>2 ta joy</b> sizga berildi.")
         details = texts.task_details(task)
+        chat = rec["proxy_uid"] if (rec and rec["proxy_uid"]) else uid
         if rec and rec["proxy_uid"]:
-            try:
-                await context.bot.send_message(
-                    rec["proxy_uid"],
-                    texts.proxy_assign_msg(name_by.get(rec["proxy_uid"], ""), rec["name"],
-                                           task, fmt_short(deadline), details, note),
-                    parse_mode=ParseMode.HTML)
-            except Exception as e:
-                logger.warning("Proxy xabari yuborilmadi: %s", e)
+            body = texts.proxy_assign_msg(name_by.get(rec["proxy_uid"], ""), rec["name"],
+                                          task, fmt_short(deadline), details, note)
         else:
-            try:
-                await context.bot.send_message(
-                    uid,
-                    f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
+            body = (f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
                     f"🧹 Vazifangiz: <b>{task}</b>\n"
                     f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
-                    + details + note,
-                    parse_mode=ParseMode.HTML)
-            except Exception as e:
-                logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
-    # Guruhga: shartlar + taqsimot
+                    + details + note)
+        try:
+            m = await context.bot.send_message(chat, body, parse_mode=ParseMode.HTML)
+            await db.set_assignment_msg(aid, chat, m.message_id)
+        except Exception as e:
+            logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
+    # Guruhga: shartlar + taqsimot (eski xabarlarni o'chirib)
     gid = await db.get_setting("group_chat_id")
     if gid:
+        await _del_group_msg(context, "grp_terms_msg")
         try:
-            await context.bot.send_message(int(gid), texts.TERMS_TEXT, parse_mode=ParseMode.HTML)
+            m = await context.bot.send_message(int(gid), texts.TERMS_TEXT, parse_mode=ParseMode.HTML)
+            await db.set_setting("grp_terms_msg", f"{gid}:{m.message_id}")
         except Exception:
             pass
     await announce_to_group(context, today)
+
+
+async def _del_group_msg(context, key: str) -> None:
+    v = await db.get_setting(key)
+    if not v:
+        return
+    try:
+        chat, mid = v.split(":")
+        await context.bot.delete_message(int(chat), int(mid))
+    except Exception:
+        pass
 
 
 async def job_group_reminder(context: ContextTypes.DEFAULT_TYPE) -> None:
