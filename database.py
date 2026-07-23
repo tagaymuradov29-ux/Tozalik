@@ -101,6 +101,7 @@ async def _create_tables() -> None:
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS forced_task TEXT;
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS duty_debt INT NOT NULL DEFAULT 0;
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS proxy_uid BIGINT;
+            ALTER TABLE residents ADD COLUMN IF NOT EXISTS return_penalty INT NOT NULL DEFAULT 0;
             ALTER TABLE fines ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'cleaning';
             ALTER TABLE extra_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
             """
@@ -229,6 +230,13 @@ async def incr_duty_debt(telegram_id: int, delta: int) -> None:
         await con.execute(
             "UPDATE residents SET duty_debt = GREATEST(0, duty_debt + $2) WHERE telegram_id=$1",
             telegram_id, delta,
+        )
+
+
+async def set_return_penalty(telegram_id: int, n: int) -> None:
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE residents SET return_penalty=$2 WHERE telegram_id=$1", telegram_id, n
         )
 
 

@@ -41,6 +41,8 @@ ANNOUNCE_HOUR: int = int(_get("ANNOUNCE_HOUR", "5"))
 PRE_DEADLINE_HOUR: int = int(_get("PRE_DEADLINE_HOUR", "4"))
 # Jarima tekshiriladigan soat (ertasi kun 05:00)
 DEADLINE_HOUR: int = int(_get("DEADLINE_HOUR", "5"))
+# Guruhga kunduzgi qayta eslatma soati (13:00)
+GROUP_REMINDER_HOUR: int = int(_get("GROUP_REMINDER_HOUR", "13"))
 
 # Tozalik navbati necha kunda almashadi (har hafta)
 CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))

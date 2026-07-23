@@ -36,6 +36,7 @@ from config import (
     CYCLE_DAYS,
     DEADLINE_HOUR,
     FINE_AMOUNT,
+    GROUP_REMINDER_HOUR,
     INITIAL_ORDER,
     PRE_DEADLINE_HOUR,
     TZ,
@@ -108,13 +109,16 @@ async def available_ids(on_date: dt.date) -> list[int]:
 
 
 def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str],
-                       debt: dict[int, int] | None = None) -> dict[int, str | None]:
+                       debt: dict[int, int] | None = None,
+                       doubles: set | None = None) -> dict[int, str | None]:
     """Navbat taqsimoti:
     - forced (rad etilgan) o'sha vazifani oladi;
+    - doubles (viloyatdan qaytgan) 2 ta joy oladi;
     - navbatchilik qarzi (debt>0) bo'lganlar har siklda majburan navbatda;
     - qolganlar adolatli aylanadi (cidx bo'yicha siljiydi).
     """
     debt = debt or {}
+    doubles = doubles or set()
     result: dict[int, str | None] = {tid: None for tid in ids}
     taken_people, taken_tasks = set(), set()
     for tid in ids:
@@ -124,6 +128,12 @@ def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str],
             taken_people.add(tid)
             taken_tasks.add(ft)
     free_tasks = [t for t in texts.TASKS if t not in taken_tasks]
+    # Viloyatdan qaytganlarga 2 tadan joy (imkon bo'lsa)
+    for tid in ids:
+        if tid in doubles and tid not in taken_people and len(free_tasks) >= 2:
+            two = [free_tasks.pop(0), free_tasks.pop(0)]
+            result[tid] = " ➕ ".join(two)
+            taken_people.add(tid)
     debt_people = [tid for tid in ids if tid not in taken_people and debt.get(tid, 0) > 0]
     normal_people = [tid for tid in ids if tid not in taken_people and tid not in debt_people]
     if normal_people:
@@ -131,7 +141,6 @@ def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str],
         normal_people = normal_people[shift:] + normal_people[:shift]
     free_people = debt_people + normal_people
     k = min(len(free_people), len(free_tasks))
-    # Odamlar cidx bo'yicha siljigan, vazifalar tartibi sobit — shunda navbat aylanadi
     for j in range(k):
         result[free_people[j]] = free_tasks[j]
     return result
@@ -277,7 +286,9 @@ async def ensure_cycle_assignment(telegram_id: int, cyc: dt.date) -> str | None:
     forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
               if r["forced_task"] and r["duty_debt"] > 0}
     debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
-    mapping = assign_with_forced(ids, rotation.cycle_index(cyc), forced, debt)
+    doubles = {r["telegram_id"] for r in residents_all
+               if r["return_penalty"] > 0 and r["telegram_id"] in ids}
+    mapping = assign_with_forced(ids, rotation.cycle_index(cyc), forced, debt, doubles)
     task = mapping.get(telegram_id)
     if task:
         await db.create_assignment(telegram_id, cyc, task)
@@ -550,27 +561,39 @@ def mention(uid: int, name: str) -> str:
     return f'<a href="tg://user?id={uid}">{html_escape(name)}</a>'
 
 
-async def announce_to_group(context, cycle_start, deadline, task_to_uid, name_by, rec_by=None) -> None:
-    """Guruhga yangi taqsimotni har bir kishini belgilab e'lon qiladi."""
-    rec_by = rec_by or {}
+async def announce_to_group(context, cyc, reminder=False) -> None:
+    """Guruhga taqsimotni bazadan o'qib, har kishini belgilab e'lon/eslatma qiladi."""
     gid = await db.get_setting("group_chat_id")
     if not gid:
         return
+    assignments = await db.get_cycle_assignments(cyc)
+    if not assignments:
+        return
+    rec_by = {r["telegram_id"]: r for r in await db.get_active_residents()}
+    deadline = cyc + dt.timedelta(days=1)
     entries = []
     for task in texts.TASKS:
-        uid = task_to_uid.get(task)
+        uid = None
+        for a in assignments:
+            if task in a["areas"]:
+                uid = a["telegram_id"]
+                break
         if not uid:
             who = "—"
         else:
             rec = rec_by.get(uid)
             if rec and rec["proxy_uid"]:
-                who = (mention(rec["proxy_uid"], name_by.get(rec["proxy_uid"], "")) +
+                who = (mention(rec["proxy_uid"], rec_by.get(rec["proxy_uid"], {}).get("name", "")
+                               if rec["proxy_uid"] in rec_by else "") +
                        f" (ukasi {html_escape(rec['name'])})")
             else:
-                who = mention(uid, name_by.get(uid, "—"))
+                nm = rec["name"] if rec else str(uid)
+                who = mention(uid, nm)
         entries.append((who, task, texts.task_details(task)))
     dl_str = f"{deadline.day:02d}.{deadline.month:02d}.{deadline.year} 05:00"
-    text = texts.group_announce_full(dl_str, entries, texts.GROUP_NOTE)
+    period = f"{cyc.day:02d}.{cyc.month:02d} 05:00 → {dl_str}"
+    text = texts.group_announce_full(dl_str, entries, texts.GROUP_NOTE,
+                                     period_str=period, reminder=reminder)
     try:
         await context.bot.send_message(int(gid), text, parse_mode=ParseMode.HTML)
     except Exception as e:
@@ -597,12 +620,15 @@ async def broadcast_report(context, file_id, file_type, caption, report_id) -> N
             logger.warning("Adminga hisobot yuborilmadi %s: %s", admin_id, e)
 
 
-def task_items(task: str) -> list[str]:
+def task_items(areas: str) -> list[str]:
     out = []
-    for line in texts.TASK_DETAILS.get(task, "").split("\n"):
-        line = line.strip()
-        if line and line[0].isdigit():
-            out.append(line.split(".", 1)[1].strip() if "." in line else line)
+    # areas 1 yoki 2 ta vazifadan iborat bo'lishi mumkin (viloyatdan qaytgan)
+    tasks = [t for t in texts.TASKS if t in areas] or [areas]
+    for t in tasks:
+        for line in texts.TASK_DETAILS.get(t, "").split("\n"):
+            line = line.strip()
+            if line and line[0].isdigit():
+                out.append(line.split(".", 1)[1].strip() if "." in line else line)
     return out
 
 
@@ -1096,8 +1122,9 @@ async def came_back(update, context, resident) -> None:
         await update.message.reply_text(texts.NOT_AWAY)
         return
     await db.clear_away(resident["telegram_id"])
+    await db.set_return_penalty(resident["telegram_id"], 1)  # qaytdi -> 2 joy
     r2 = await db.get_resident(resident["telegram_id"])
-    await update.message.reply_text(texts.BACK_MSG, parse_mode=ParseMode.HTML,
+    await update.message.reply_text(texts.back_penalty_msg(), parse_mode=ParseMode.HTML,
                                     reply_markup=main_menu(r2))
 
 
@@ -1108,7 +1135,8 @@ async def on_return_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     uid = query.from_user.id
     if action == "yes":
         await db.clear_away(uid)
-        await query.edit_message_text(texts.BACK_MSG, parse_mode=ParseMode.HTML)
+        await db.set_return_penalty(uid, 1)  # qaytdi -> 2 joy
+        await query.edit_message_text(texts.back_penalty_msg(), parse_mode=ParseMode.HTML)
     else:  # extend
         context.user_data["awaiting"] = "extend_date"
         await query.edit_message_text(texts.AWAY_EXTEND_ASK)
@@ -1484,70 +1512,89 @@ async def on_test_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 # =================== Jadval (JobQueue) ===================
 async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Ertalab: yangi sikl boshlansa vazifa tarqatish + qaytish so'rovlari."""
+    """05:00: viloyatdan qaytganlarni belgilash + sikl boshi bo'lsa taqsimot."""
     today = today_local()
-    if (not await tasks_paused() and not rotation.before_start(today)
-            and rotation.is_cycle_start(today)):
-        ids = await available_ids(today)
-        residents_all = await db.get_active_residents()
-        rec_by = {r["telegram_id"]: r for r in residents_all}
-        # "O'sha joy" faqat navbatchilik qarzi bor (jazolangan) odamlarga
-        forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
-                  if r["forced_task"] and r["duty_debt"] > 0}
-        debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
-        mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt)
-        deadline = today + dt.timedelta(days=1)  # ertasi kun 05:00 gacha
-        name_by = {r["telegram_id"]: r["name"] for r in residents_all}
-        task_to_uid: dict[str, int] = {}
-        for uid, task in mapping.items():
-            if not task:
-                continue
-            task_to_uid[task] = uid
-            await db.create_assignment(uid, today, task)
-            rec = rec_by.get(uid)
-            # Navbatchilik qarzi bo'lsa — kamaytirib, izoh qo'shamiz
-            note = texts.TASK_NOTE
-            if rec and rec["duty_debt"] > 0:
-                await db.incr_duty_debt(uid, -1)
-                remaining = rec["duty_debt"] - 1
-                note += texts.penalty_note(remaining)
-                if remaining <= 0:
-                    await db.set_forced_task(uid, None)
-            details = texts.task_details(task)
-            if rec and rec["proxy_uid"]:
-                # Telefonsiz a'zo — boshqaruvchisiga yuboramiz
-                try:
-                    await context.bot.send_message(
-                        rec["proxy_uid"],
-                        texts.proxy_assign_msg(name_by.get(rec["proxy_uid"], ""), rec["name"],
-                                               task, fmt_short(deadline), details, note),
-                        parse_mode=ParseMode.HTML)
-                except Exception as e:
-                    logger.warning("Proxy xabari yuborilmadi: %s", e)
-            else:
-                try:
-                    await context.bot.send_message(
-                        uid,
-                        f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
-                        f"🧹 Vazifangiz: <b>{task}</b>\n"
-                        f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
-                        + details + note,
-                        parse_mode=ParseMode.HTML)
-                except Exception as e:
-                    logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
-        # Guruhga e'lon (proxy bo'lsa boshqaruvchisini belgilaymiz)
-        await announce_to_group(context, today, deadline, task_to_uid, name_by, rec_by)
-    # Qaytish so'rovlari
+
+    # 1) Viloyatdan qaytganlar (har kuni) — 2 joy penaltysi
     for r in await db.get_residents_returning_on(today):
+        await db.clear_away(r["telegram_id"])
+        await db.set_return_penalty(r["telegram_id"], 1)
         try:
-            await context.bot.send_message(
-                r["telegram_id"], texts.return_prompt_msg(fmt_short(today)),
-                reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("🏠 Uyga keldim", callback_data="back:yes"),
-                    InlineKeyboardButton("⏳ Uzaytirish", callback_data="back:extend"),
-                ]]))
+            await context.bot.send_message(r["telegram_id"], texts.back_penalty_msg(),
+                                           parse_mode=ParseMode.HTML)
         except Exception:
             pass
+
+    # 2) Sikl boshi bo'lsa — vazifa taqsimoti
+    if await tasks_paused() or rotation.before_start(today) or not rotation.is_cycle_start(today):
+        return
+
+    ids = await available_ids(today)
+    residents_all = await db.get_active_residents()
+    rec_by = {r["telegram_id"]: r for r in residents_all}
+    forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
+              if r["forced_task"] and r["duty_debt"] > 0}
+    debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
+    doubles = {r["telegram_id"] for r in residents_all
+               if r["return_penalty"] > 0 and r["telegram_id"] in ids}
+    mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt, doubles)
+    deadline = today + dt.timedelta(days=1)
+    name_by = {r["telegram_id"]: r["name"] for r in residents_all}
+    for uid, task in mapping.items():
+        if not task:
+            continue
+        await db.create_assignment(uid, today, task)
+        rec = rec_by.get(uid)
+        note = texts.TASK_NOTE
+        if rec and rec["duty_debt"] > 0:
+            await db.incr_duty_debt(uid, -1)
+            remaining = rec["duty_debt"] - 1
+            note += texts.penalty_note(remaining)
+            if remaining <= 0:
+                await db.set_forced_task(uid, None)
+        if rec and rec["return_penalty"] > 0:
+            await db.set_return_penalty(uid, 0)  # 2 joy berildi, tozalandi
+            note += ("\n\n✈️ Navbatingizni o'tkazganingiz uchun bu hafta "
+                     "<b>2 ta joy</b> sizga berildi.")
+        details = texts.task_details(task)
+        if rec and rec["proxy_uid"]:
+            try:
+                await context.bot.send_message(
+                    rec["proxy_uid"],
+                    texts.proxy_assign_msg(name_by.get(rec["proxy_uid"], ""), rec["name"],
+                                           task, fmt_short(deadline), details, note),
+                    parse_mode=ParseMode.HTML)
+            except Exception as e:
+                logger.warning("Proxy xabari yuborilmadi: %s", e)
+        else:
+            try:
+                await context.bot.send_message(
+                    uid,
+                    f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
+                    f"🧹 Vazifangiz: <b>{task}</b>\n"
+                    f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
+                    + details + note,
+                    parse_mode=ParseMode.HTML)
+            except Exception as e:
+                logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
+    # Guruhga: shartlar + taqsimot
+    gid = await db.get_setting("group_chat_id")
+    if gid:
+        try:
+            await context.bot.send_message(int(gid), texts.TERMS_TEXT, parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
+    await announce_to_group(context, today)
+
+
+async def job_group_reminder(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """13:00: guruhga bugungi navbatni qayta eslatma (belgilab)."""
+    if await tasks_paused():
+        return
+    today = today_local()
+    if rotation.before_start(today) or not rotation.is_cycle_start(today):
+        return
+    await announce_to_group(context, today, reminder=True)
 
 
 async def job_remind(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1804,6 +1851,7 @@ def main() -> None:
 
     jq = app.job_queue
     jq.run_daily(job_morning, time=dt.time(hour=ANNOUNCE_HOUR, minute=0, tzinfo=TZ))
+    jq.run_daily(job_group_reminder, time=dt.time(hour=GROUP_REMINDER_HOUR, minute=0, tzinfo=TZ))
     jq.run_daily(job_predeadline, time=dt.time(hour=PRE_DEADLINE_HOUR, minute=0, tzinfo=TZ))
     jq.run_daily(job_deadline, time=dt.time(hour=DEADLINE_HOUR, minute=0, tzinfo=TZ))
 

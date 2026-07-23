@@ -169,11 +169,15 @@ TASK_NOTE = (
 )
 
 
-def group_announce_full(deadline_str: str, entries: list, note: str) -> str:
+def group_announce_full(deadline_str: str, entries: list, note: str,
+                        period_str: str = "", reminder: bool = False) -> str:
     """Guruh e'loni: muddat + har bir odam 'Ism | Vazifa' + batafsil + note + '+qoldiring'.
     entries: [(mention_html, task, details_text), ...]
     """
+    head = "🔔 <b>ESLATMA — bugungi navbat!</b>\n" if reminder else ""
     lines = [
+        head +
+        (f"🗓 <b>Navbat:</b> {period_str}\n" if period_str else "") +
         f"🧹 <b>{deadline_str} gacha</b> tozalash kerak. "
         f"Tozalanmagan bo'lsa <b>{FA} so'm</b>dan jarima olinadi.\n"
     ]
@@ -200,8 +204,47 @@ GROUP_NOTE = (
 )
 
 
-def task_details(task: str) -> str:
-    return TASK_DETAILS.get(task, "")
+def task_details(areas: str) -> str:
+    # Bitta odamda 2 joy bo'lishi mumkin (viloyatdan qaytgan) — hammasini birlashtiramiz
+    parts = [TASK_DETAILS[t] for t in TASKS if t in areas]
+    if parts:
+        return "\n\n".join(parts)
+    return TASK_DETAILS.get(areas, "")
+
+
+def areas_task_list(areas: str) -> list:
+    """areas ichidagi TASKS ro'yxati (1 yoki 2 ta)."""
+    return [t for t in TASKS if t in areas] or [areas]
+
+
+# --- To'liq shartlar (guruhga 05:00 da yuboriladi) ---
+TERMS_TEXT = (
+    "📋 <b>UY TOZALIK SHARTLARI</b>\n\n"
+    f"🔄 <b>Navbat:</b> Tozalik har <b>{CYCLE_DAYS} kunda</b> navbat bilan almashadi. "
+    "Har kimga joy biriktiriladi: 🍳 Oshxona · 🚽 Hojatxona+Koridor · 🚿 Dush+Musor.\n\n"
+    "⏰ <b>Muddat:</b> Vazifa 05:00 da beriladi, <b>ertasi kun 05:00 gacha</b> tozalab, "
+    "botga video hisobot yuborasiz (04:00 da eslatma).\n\n"
+    "✅ <b>Hisobot:</b> \"📤 Tozalik vazifamni bajardim\" orqali hamma joyni to'liq "
+    "ko'rsatib video yuborasiz. Admin har bir bandni tekshiradi.\n\n"
+    "💸 <b>Jarimalar:</b>\n"
+    f"• Vaqtida bajarmasa → <b>{FA} so'm</b> + keyingi safar ham o'sha joy (+2 navbatchilik).\n"
+    "• Chala bajarsa (rad etilsa) → qayta bajarasiz + 1 navbatchilik.\n"
+    f"• Oshxona/dush/eshikdan foydalanib hisobot bermasa → admin ko'rib {FA} so'm.\n\n"
+    "💳 <b>To'lov:</b> Jarimani elektr energiyaga to'lab, chek rasmini botga yuborasiz. "
+    "Admin tasdiqlagach jarima o'chadi.\n\n"
+    "✈️ <b>Viloyat:</b> Viloyatga ketsangiz botда belgilaysiz — qaytish kunигacha vazifa/"
+    "jarima yo'q. Yo'qligingizda joyингiz boshqa odamga biriktiriladi. Qaytganingizda, "
+    "navbatingizni o'tkazganingiz uchun sizga <b>2 ta joy</b> beriladi.\n\n"
+    "❗️ Musorni eshik oldiga qo'ymang — yig'ib, musorga tashlab keling. Hamma joy toza bo'lsin.\n\n"
+    "<b>Aytilgan barcha shartlarga rozimisiz? \"+\" qoldiring!</b>"
+)
+
+
+def back_penalty_msg() -> str:
+    return (
+        "🏠 <b>Xush kelibsiz!</b>\n"
+        "Navbatingizni o'tkazganingiz uchun keyingi navbatда sizga <b>2 ta joy</b> beriladi."
+    )
 
 
 REPORT_MENU_TITLE = "📤 Qaysi hisobotni yuborasiz? Tanlang 👇"
