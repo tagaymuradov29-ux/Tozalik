@@ -153,6 +153,18 @@ async def ensure_active_resident(telegram_id: int, name: str) -> None:
         )
 
 
+async def update_resident_name(telegram_id: int, name: str) -> None:
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE residents SET name=$2 WHERE telegram_id=$1", telegram_id, name
+        )
+
+
+async def delete_cycle_assignments(cycle_start: dt.date) -> None:
+    async with _pool.acquire() as con:
+        await con.execute("DELETE FROM assignments WHERE task_date=$1", cycle_start)
+
+
 async def get_resident(telegram_id: int) -> asyncpg.Record | None:
     async with _pool.acquire() as con:
         return await con.fetchrow("SELECT * FROM residents WHERE telegram_id = $1", telegram_id)

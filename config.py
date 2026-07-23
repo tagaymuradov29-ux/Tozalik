@@ -51,13 +51,19 @@ CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))
 _ts = _get("TASKS_START_DATE", "2026-07-23")
 TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
-# Boshlang'ich navbat tartibi (1-hafta shu ketma-ketlikda):
-# Oshxona, Hojatxona+Koridor, Dush+Musor — shu tartibda.
+# Boshlang'ich navbat tartibi (ism bo'yicha):
+# Oshxona=1-o'rin, Hojatxona+Koridor=2-o'rin, Dush+Musor=3-o'rin.
 INITIAL_ORDER: list[str] = [
     x.strip() for x in _get(
-        "INITIAL_ORDER", "Shahzod Tog'ayimurodov, Bunyod, Jamshid"
+        "INITIAL_ORDER", "Shahzod Tog'aymurodov, Bunyod, Jamshid"
     ).split(",") if x.strip()
 ]
+
+# Aniq tartib — Telegram ID bo'yicha (ism mos kelmasa ham ishlaydi).
+# Admin (Shahzod) -> 0-o'rin (Oshxona), Jamshid -> 2-o'rin (Dush+Musor).
+INITIAL_ORDER_IDS: dict[int, int] = {653767745: 2}
+for _a in ADMIN_IDS:
+    INITIAL_ORDER_IDS.setdefault(_a, 0)
 
 # --- Jarima (so'm) ---
 FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "100000"))  # tozalik vazifasi (to'liq)

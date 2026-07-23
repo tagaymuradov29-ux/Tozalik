@@ -38,6 +38,7 @@ from config import (
     FINE_AMOUNT,
     GROUP_REMINDER_HOUR,
     INITIAL_ORDER,
+    INITIAL_ORDER_IDS,
     PRE_DEADLINE_HOUR,
     TZ,
     is_admin,
@@ -91,9 +92,12 @@ def main_menu(resident) -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
 
-def _order_index(name: str) -> tuple:
-    """INITIAL_ORDER bo'yicha tartib kaliti (moslar oldinda, shu ketma-ketlikda)."""
-    nm = (name or "").lower()
+def _order_index(rec) -> tuple:
+    """Navbat tartib kaliti — avval Telegram ID bo'yicha, keyin ism bo'yicha."""
+    tid = rec["telegram_id"]
+    if tid in INITIAL_ORDER_IDS:
+        return (0, INITIAL_ORDER_IDS[tid], 0)
+    nm = (rec["name"] or "").lower()
     for i, key in enumerate(INITIAL_ORDER):
         k = key.lower()
         if k in nm or all(w in nm for w in k.split()):
@@ -104,7 +108,7 @@ def _order_index(name: str) -> tuple:
 async def available_ids(on_date: dt.date) -> list[int]:
     """Faol va viloyatda bo'lmagan a'zolar — boshlang'ich tartibda (admin ham qatnashadi)."""
     residents = list(await db.get_available_residents(on_date))
-    residents.sort(key=lambda r: _order_index(r["name"]) + (r["telegram_id"],))
+    residents.sort(key=lambda r: _order_index(r) + (r["telegram_id"],))
     return [r["telegram_id"] for r in residents]
 
 
@@ -1765,6 +1769,19 @@ async def post_init(app: Application) -> None:
         await db.reset_all_penalties()
         await db.set_setting("reset_6day_cycle", "done")
         logger.info("6-kunlik reset: %d jarima o'chirildi, navbatchilik nollandi", n)
+    # Bir martalik: ism/tartibni to'g'irlash va joriy haftani qayta tarqatishga tayyorlash
+    if await db.get_setting("fix_names_v8") is None:
+        for aid in ADMIN_IDS:
+            await db.ensure_active_resident(aid, "Shahzod Tog'aymurodov")
+            await db.update_resident_name(aid, "Shahzod Tog'aymurodov")
+        await db.ensure_active_resident(653767745, "Jamshid")
+        await db.update_resident_name(653767745, "Jamshid")
+        # Joriy hafta vazifalarini o'chiramiz — /eslat bilan to'g'ri qayta tarqaladi
+        cyc = rotation.cycle_start(today_local())
+        if not rotation.before_start(cyc):
+            await db.delete_cycle_assignments(cyc)
+        await db.set_setting("fix_names_v8", "done")
+        logger.info("Ism/tartib to'g'irlandi, joriy hafta tozalandi.")
     # Bir martalik: haftalik tartibga o'tish — a'zolarni qo'shish va vazifani yoqish
     if await db.get_setting("setup_weekly_v7") is None:
         # Adminni (Shahzod Tog'ayimurodov) va Jamshidni navbatga qo'shamiz
