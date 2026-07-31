@@ -1551,8 +1551,12 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     for uid, task in mapping.items():
         if not task:
             continue
-        # Eski (avvalgi) xabar bo'lsa — o'chiramiz (qayta yuborishda takror bo'lmasin)
         prev = await db.get_assignment(uid, today)
+        # Allaqachon bajarilgan bo'lsa (masalan oldindan tozalab qo'ygan) — tegmaymiz:
+        # yangi vazifa xabari yuborilmaydi, hisobot ham kutilmaydi.
+        if prev and prev["status"] in ("reported", "approved"):
+            continue
+        # Eski (avvalgi) xabar bo'lsa — o'chiramiz (qayta yuborishda takror bo'lmasin)
         if prev and prev["msg_id"]:
             try:
                 await context.bot.delete_message(prev["msg_chat"], prev["msg_id"])
@@ -1812,6 +1816,26 @@ async def post_init(app: Application) -> None:
         await db.set_setting("tasks_paused", None)
         await db.set_setting("setup_weekly_v7", "done")
         logger.info("Haftalik sozlash: a'zolar qo'shildi, vazifa yoqildi.")
+    # Bir martalik: 31-iyul haftasiga qayta sozlash (yangi navbat + jarima tozalash)
+    if await db.get_setting("reset_jul31_v9") is None:
+        # Yangi a'zolarni faollashtiramiz (ular pinlangan navbatni oladi)
+        await db.ensure_active_resident(199906622, "Shaxzod Asadjonov")
+        await db.ensure_active_resident(377536628, "Ilhom")
+        # Barcha jarima va navbatchilik qarzlarini tozalaymiz — toza boshlash
+        await db.clear_all_fines()
+        await db.reset_all_penalties()
+        # Eski (23 va 30-iyul) taqsimotlarni o'chiramiz
+        for _d in (dt.date(2026, 7, 23), dt.date(2026, 7, 30)):
+            await db.delete_cycle_assignments(_d)
+        # Shaxzod Asadjonov 30-iyul kuni oshxonani tozalab qo'ygan —
+        # 31-iyul sikli uchun uni oldindan "bajarilgan" deb belgilaymiz.
+        # (Undan hisobot kutilmaydi, jarima yozilmaydi; job_morning xabar yubormaydi.)
+        _aid = await db.create_assignment(199906622, dt.date(2026, 7, 31), texts.TASKS[0])
+        await db.set_assignment_status(_aid, "approved")
+        # Vazifa taqsimoti yoniq bo'lsin
+        await db.set_setting("tasks_paused", None)
+        await db.set_setting("reset_jul31_v9", "done")
+        logger.info("31-iyul reset: jarima tozalandi, Asadjonov oshxona bajarilgan, navbat sozlandi.")
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),

@@ -47,23 +47,26 @@ GROUP_REMINDER_HOUR: int = int(_get("GROUP_REMINDER_HOUR", "13"))
 # Tozalik navbati necha kunda almashadi (har hafta)
 CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))
 
-# Tozalik vazifalari shu sanadan boshlab beriladi (23-iyul 2026)
-_ts = _get("TASKS_START_DATE", "2026-07-23")
+# Tozalik vazifalari shu sanadan boshlab beriladi
+# (31-iyul 2026 05:00 da beriladi -> 1-avgust 05:00 gacha topshiriladi)
+_ts = _get("TASKS_START_DATE", "2026-07-31")
 TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
-# Boshlang'ich navbat tartibi (ism bo'yicha):
-# Oshxona=1-o'rin, Hojatxona+Koridor=2-o'rin, Dush+Musor=3-o'rin.
+# Boshlang'ich navbat tartibi — endi faqat Telegram ID bo'yicha aniqlanadi.
+# Ism bo'yicha moslash o'chirildi (tasodifiy to'qnashuvlarni oldini olish uchun).
 INITIAL_ORDER: list[str] = [
-    x.strip() for x in _get(
-        "INITIAL_ORDER", "Shahzod Tog'aymurodov, Bunyod, Jamshid"
-    ).split(",") if x.strip()
+    x.strip() for x in _get("INITIAL_ORDER", "").split(",") if x.strip()
 ]
 
-# Aniq tartib — Telegram ID bo'yicha (ism mos kelmasa ham ishlaydi).
-# Admin (Shahzod) -> 0-o'rin (Oshxona), Jamshid -> 2-o'rin (Dush+Musor).
-INITIAL_ORDER_IDS: dict[int, int] = {653767745: 2}
+# Aniq navbat tartibi — Telegram ID -> o'rin.
+# O'rin = vazifa indeksi: 0=🍳 Oshxona, 1=🚽 Hojatxona+Koridor, 2=🚿 Dush+Musor.
+#   Shaxzod Asadjonov (199906622) -> 0 (Oshxona)
+#   Ilhom             (377536628) -> 1 (Hojatxona+Koridor)
+#   Admin (Shahzod Tog'aymurodov) -> 2 (Dush+Musor)
+# Pinlanmaganlar (Jamshid, Bunyod, ...) oxirida qoladi -> vazifa yetmasa dam oladi.
+INITIAL_ORDER_IDS: dict[int, int] = {199906622: 0, 377536628: 1}
 for _a in ADMIN_IDS:
-    INITIAL_ORDER_IDS.setdefault(_a, 0)
+    INITIAL_ORDER_IDS.setdefault(_a, 2)
 
 # --- Jarima (so'm) ---
 FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "100000"))  # tozalik vazifasi (to'liq)
