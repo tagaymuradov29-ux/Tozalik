@@ -164,7 +164,17 @@ async def update_resident_name(telegram_id: int, name: str) -> None:
 
 async def delete_cycle_assignments(cycle_start: dt.date) -> None:
     async with _pool.acquire() as con:
-        await con.execute("DELETE FROM assignments WHERE task_date=$1", cycle_start)
+        async with con.transaction():
+            # Eski bazalarda fines.assignment_id ga FK bor — avval o'sha havolalarni
+            # uzamiz, aks holda DELETE ForeignKeyViolationError beradi.
+            await con.execute(
+                "UPDATE fines SET assignment_id = NULL WHERE assignment_id IN "
+                "(SELECT id FROM assignments WHERE task_date = $1)",
+                cycle_start,
+            )
+            await con.execute(
+                "DELETE FROM assignments WHERE task_date = $1", cycle_start
+            )
 
 
 async def get_resident(telegram_id: int) -> asyncpg.Record | None:
