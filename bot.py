@@ -1836,6 +1836,52 @@ async def post_init(app: Application) -> None:
         await db.set_setting("tasks_paused", None)
         await db.set_setting("reset_jul31_v9", "done")
         logger.info("31-iyul reset: jarima tozalandi, Asadjonov oshxona bajarilgan, navbat sozlandi.")
+    # Bir martalik: TO'LIQ RESET + yangi roster (Asadjonov / Bunyod / Jamshid), joriy sikl uchun
+    if await db.get_setting("reset_v10") is None:
+        try:
+            await db.ensure_active_resident(199906622, "Shaxzod Asadjonov")
+            await db.ensure_active_resident(653767745, "Jamshid")
+            bunyod = await db.find_resident_by_name("bunyod")
+            # Hammasini toza tozalaymiz: jarima, qarz, barcha taqsimot
+            await db.clear_all_fines()
+            await db.reset_all_penalties()
+            await db.delete_all_assignments()
+            await db.set_setting("tasks_paused", None)
+            # Joriy sikl (bugungi sana bo'yicha): Asadjonov->Oshxona, Bunyod->Hojatxona, Jamshid->Dush
+            cyc = rotation.cycle_start(today_local())
+            if not rotation.before_start(cyc):
+                await db.create_assignment(199906622, cyc, texts.TASKS[0])
+                await db.create_assignment(653767745, cyc, texts.TASKS[2])
+                if bunyod:
+                    await db.ensure_active_resident(bunyod["telegram_id"], bunyod["name"])
+                    await db.create_assignment(bunyod["telegram_id"], cyc, texts.TASKS[1])
+                # Har bir kishiga shaxsan + guruhga xabar (xato bo'lsa ham crash yo'q)
+                deadline = cyc + dt.timedelta(days=1)
+                for a in await db.get_cycle_assignments(cyc):
+                    rec = await db.get_resident(a["telegram_id"])
+                    chat = rec["proxy_uid"] if (rec and rec["proxy_uid"]) else a["telegram_id"]
+                    body = (f"🆕 <b>Yangi tozalik vazifasi</b>\n\n"
+                            f"🧹 Vazifangiz: <b>{a['areas']}</b>\n"
+                            f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
+                            + texts.task_details(a["areas"]) + texts.TASK_NOTE)
+                    try:
+                        await app.bot.send_message(chat, body, parse_mode=ParseMode.HTML)
+                    except Exception:
+                        pass
+
+                class _MigCtx:  # announce_to_group uchun minimal kontekst
+                    pass
+                _mc = _MigCtx()
+                _mc.bot = app.bot
+                try:
+                    await announce_to_group(_mc, cyc)
+                except Exception as e:
+                    logger.warning("reset_v10 guruh e'loni yuborilmadi: %s", e)
+            await db.set_setting("reset_v10", "done")
+            logger.info("reset_v10: reset + yangi roster (Asadjonov/Bunyod/Jamshid), sikl=%s, Bunyod=%s",
+                        cyc, bunyod["telegram_id"] if bunyod else "topilmadi")
+        except Exception as e:
+            logger.error("reset_v10 XATOSI (bot crash bo'lmaydi): %s", e)
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),

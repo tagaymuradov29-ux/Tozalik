@@ -177,6 +177,24 @@ async def delete_cycle_assignments(cycle_start: dt.date) -> None:
             )
 
 
+async def delete_all_assignments() -> None:
+    """Barcha taqsimotlarni o'chiradi (to'liq reset). FK-xavfsiz."""
+    async with _pool.acquire() as con:
+        async with con.transaction():
+            await con.execute("UPDATE fines SET assignment_id = NULL")
+            await con.execute("DELETE FROM assignments")
+
+
+async def find_resident_by_name(substr: str) -> asyncpg.Record | None:
+    """Ism ichida substr bor a'zoni topadi (faollarni oldinda)."""
+    async with _pool.acquire() as con:
+        return await con.fetchrow(
+            "SELECT * FROM residents WHERE lower(name) LIKE lower($1) "
+            "ORDER BY (status='active') DESC, telegram_id LIMIT 1",
+            f"%{substr}%",
+        )
+
+
 async def get_resident(telegram_id: int) -> asyncpg.Record | None:
     async with _pool.acquire() as con:
         return await con.fetchrow("SELECT * FROM residents WHERE telegram_id = $1", telegram_id)
