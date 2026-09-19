@@ -379,10 +379,6 @@ async def show_my_task(update, context, resident) -> None:
 def report_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(texts.RB_TASK, callback_data="rep:task")],
-        [InlineKeyboardButton(texts.RB_KITCHEN, callback_data="rep:kitchen_used")],
-        [InlineKeyboardButton(texts.RB_SHOWER, callback_data="rep:shower_after")],
-        [InlineKeyboardButton(texts.RB_DOOR_OUT, callback_data="rep:door_out")],
-        [InlineKeyboardButton(texts.RB_DOOR_IN, callback_data="rep:door_in")],
     ])
 
 
@@ -390,10 +386,6 @@ async def show_report_menu(update, context) -> None:
     user = update.effective_user
     rows = [
         [InlineKeyboardButton(texts.RB_TASK, callback_data="rep:task")],
-        [InlineKeyboardButton(texts.RB_KITCHEN, callback_data="rep:kitchen_used")],
-        [InlineKeyboardButton(texts.RB_SHOWER, callback_data="rep:shower_after")],
-        [InlineKeyboardButton(texts.RB_DOOR_OUT, callback_data="rep:door_out")],
-        [InlineKeyboardButton(texts.RB_DOOR_IN, callback_data="rep:door_in")],
     ]
     # Boshqaradigan telefonsiz a'zo(lar) vazifasi uchun tugma
     if not rotation.before_start(today_local()):
@@ -410,10 +402,6 @@ async def show_report_menu(update, context) -> None:
 def report_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(texts.RB_TASK, callback_data="rep:task")],
-        [InlineKeyboardButton(texts.RB_KITCHEN, callback_data="rep:kitchen_used")],
-        [InlineKeyboardButton(texts.RB_SHOWER, callback_data="rep:shower_after")],
-        [InlineKeyboardButton(texts.RB_DOOR_OUT, callback_data="rep:door_out")],
-        [InlineKeyboardButton(texts.RB_DOOR_IN, callback_data="rep:door_in")],
     ])
 
 
@@ -1882,6 +1870,19 @@ async def post_init(app: Application) -> None:
                         cyc, bunyod["telegram_id"] if bunyod else "topilmadi")
         except Exception as e:
             logger.error("reset_v10 XATOSI (bot crash bo'lmaydi): %s", e)
+    # Bir martalik: HAMMANI NOLGA TUSHIRISH — jarima, navbatchilik qarzi, tozalanmagan
+    # joylar (taqsimotlar) 0 ga. Hozirgi ishtirokchilar bilan noldan. Keyingi sikl
+    # o'z vaqtida (job_morning) tabiiy tarqaladi.
+    if await db.get_setting("reset_v11") is None:
+        try:
+            await db.clear_all_fines()
+            await db.reset_all_penalties()
+            await db.delete_all_assignments()
+            await db.set_setting("tasks_paused", None)
+            await db.set_setting("reset_v11", "done")
+            logger.info("reset_v11: hammasi nolga tushirildi (jarima/qarz/taqsimot tozalandi).")
+        except Exception as e:
+            logger.error("reset_v11 XATOSI (bot crash bo'lmaydi): %s", e)
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),
