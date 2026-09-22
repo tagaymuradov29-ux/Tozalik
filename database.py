@@ -104,6 +104,7 @@ async def _create_tables() -> None:
             ALTER TABLE residents ADD COLUMN IF NOT EXISTS return_penalty INT NOT NULL DEFAULT 0;
             ALTER TABLE assignments ADD COLUMN IF NOT EXISTS msg_chat BIGINT;
             ALTER TABLE assignments ADD COLUMN IF NOT EXISTS msg_id BIGINT;
+            ALTER TABLE assignments ADD COLUMN IF NOT EXISTS postponed BOOLEAN NOT NULL DEFAULT FALSE;
             ALTER TABLE fines ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'cleaning';
             ALTER TABLE extra_reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
             """
@@ -222,13 +223,14 @@ async def get_active_residents() -> list[asyncpg.Record]:
 
 
 async def get_available_residents(on_date: dt.date) -> list[asyncpg.Record]:
-    """Faol va shu sanada viloyatda emas."""
+    """Faol va viloyatda emas. Viloyatga ketgan (away_until belgilangan) a'zo
+    'viloyatdan qaytdim' ni QO'LDA bosmagunча navbatga qo'shilmaydi (avtomatik
+    qaytarish yo'q). Ya'ni away_until IS NULL bo'lganlar navbatда."""
     async with _pool.acquire() as con:
         return await con.fetch(
             "SELECT * FROM residents WHERE status='active' "
-            "AND (away_until IS NULL OR $1 >= away_until) "
-            "ORDER BY approved_at NULLS LAST, telegram_id",
-            on_date,
+            "AND away_until IS NULL "
+            "ORDER BY approved_at NULLS LAST, telegram_id"
         )
 
 
@@ -376,6 +378,14 @@ async def set_assignment_status(assignment_id: int, status: str) -> None:
     async with _pool.acquire() as con:
         await con.execute(
             "UPDATE assignments SET status=$2 WHERE id=$1", assignment_id, status
+        )
+
+
+async def set_assignment_postponed(assignment_id: int) -> None:
+    """Vazifani bir kun keyinga surish (muddat +1 kun). Bir marta."""
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE assignments SET postponed=TRUE WHERE id=$1", assignment_id
         )
 
 

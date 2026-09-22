@@ -48,25 +48,27 @@ GROUP_REMINDER_HOUR: int = int(_get("GROUP_REMINDER_HOUR", "13"))
 CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))
 
 # Tozalik vazifalari shu sanadan boshlab beriladi
-# (31-iyul 2026 05:00 da beriladi -> 1-avgust 05:00 gacha topshiriladi)
-_ts = _get("TASKS_START_DATE", "2026-07-31")
+# (23-sentyabr 2026 05:00 da beriladi -> 24-sentyabr 05:00 gacha topshiriladi)
+_ts = _get("TASKS_START_DATE", "2026-09-23")
 TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
-# Boshlang'ich navbat tartibi — endi faqat Telegram ID bo'yicha aniqlanadi.
-# Ism bo'yicha moslash o'chirildi (tasodifiy to'qnashuvlarni oldini olish uchun).
+# Boshlang'ich navbat tartibi. Bunyodning ID'si noma'lum bo'lgani uchun u ism
+# bo'yicha (quyidagi ro'yxatning 2-indeksi = Dush) aniqlanadi.
 INITIAL_ORDER: list[str] = [
-    x.strip() for x in _get("INITIAL_ORDER", "").split(",") if x.strip()
+    x.strip() for x in _get(
+        "INITIAL_ORDER", "Shaxzod Asadjonov, Shahzod Tog'aymurodov, Bunyod"
+    ).split(",") if x.strip()
 ]
 
-# Aniq navbat tartibi — Telegram ID -> o'rin.
-# O'rin = vazifa indeksi: 0=🍳 Oshxona, 1=🚽 Hojatxona+Koridor, 2=🚿 Dush+Musor.
-#   Shaxzod Asadjonov (199906622) -> 0 (Oshxona)
-#   Ilhom             (377536628) -> 1 (Hojatxona+Koridor)
-#   Admin (Shahzod Tog'aymurodov) -> 2 (Dush+Musor)
-# Pinlanmaganlar (Jamshid, Bunyod, ...) oxirida qoladi -> vazifa yetmasa dam oladi.
-INITIAL_ORDER_IDS: dict[int, int] = {199906622: 0, 377536628: 1}
+# Aniq navbat tartibi — o'rin = vazifa indeksi:
+# 0=🍳 Oshxona, 1=🚽 Hojatxona+Koridor, 2=🚿 Dush+Musor.
+#   Shaxzod Asadjonov (199906622)  -> 0 (Oshxona)
+#   Admin (Shahzod Tog'aymurodov)  -> 1 (Hojatxona+Koridor)
+#   Bunyod (ism bo'yicha, index 2) -> 2 (Dush+Musor)
+# Jamshid, Ilhom pinlanmagan -> bu roster'da dam oladi.
+INITIAL_ORDER_IDS: dict[int, int] = {199906622: 0}
 for _a in ADMIN_IDS:
-    INITIAL_ORDER_IDS.setdefault(_a, 2)
+    INITIAL_ORDER_IDS.setdefault(_a, 1)
 
 # --- Jarima (so'm) ---
 FINE_AMOUNT: int = int(_get("FINE_AMOUNT", "100000"))  # tozalik vazifasi (to'liq)

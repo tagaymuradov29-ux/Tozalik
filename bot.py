@@ -78,12 +78,14 @@ async def tasks_paused() -> bool:
 
 
 def is_away_on(resident, on_date: dt.date) -> bool:
+    # Viloyatga ketgan a'zo 'viloyatdan qaytdim' ni bosmaguncha viloyatda hisoblanadi
+    # (avtomatik qaytarish yo'q — qaytish ixtiyoriy/qo'lda).
     au = resident["away_until"] if resident else None
-    return au is not None and on_date < au
+    return au is not None
 
 
 def main_menu(resident) -> ReplyKeyboardMarkup:
-    away = resident and resident["away_until"] and today_local() < resident["away_until"]
+    away = bool(resident and resident["away_until"] is not None)
     rows = [
         [texts.BTN_MY_TASK, texts.BTN_REPORT],
         [texts.BTN_RESIDENTS, texts.BTN_RULES_FINES],
@@ -1113,14 +1115,17 @@ async def handle_custom_fine(update, context, text) -> None:
         pass
 
 
+WELCOME_BACK_MSG = ("🏠 <b>Xush kelibsiz!</b>\n"
+                    "Siz navbatga qaytdingiz. Endi navbat kelganda vazifa beriladi.")
+
+
 async def came_back(update, context, resident) -> None:
     if not is_away_on(resident, today_local()):
         await update.message.reply_text(texts.NOT_AWAY)
         return
     await db.clear_away(resident["telegram_id"])
-    await db.set_return_penalty(resident["telegram_id"], 1)  # qaytdi -> 2 joy
     r2 = await db.get_resident(resident["telegram_id"])
-    await update.message.reply_text(texts.back_penalty_msg(), parse_mode=ParseMode.HTML,
+    await update.message.reply_text(WELCOME_BACK_MSG, parse_mode=ParseMode.HTML,
                                     reply_markup=main_menu(r2))
 
 
@@ -1131,11 +1136,39 @@ async def on_return_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     uid = query.from_user.id
     if action == "yes":
         await db.clear_away(uid)
-        await db.set_return_penalty(uid, 1)  # qaytdi -> 2 joy
-        await query.edit_message_text(texts.back_penalty_msg(), parse_mode=ParseMode.HTML)
+        await query.edit_message_text(WELCOME_BACK_MSG, parse_mode=ParseMode.HTML)
     else:  # extend
         context.user_data["awaiting"] = "extend_date"
         await query.edit_message_text(texts.AWAY_EXTEND_ASK)
+
+
+async def on_postpone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """'⏳ Bir kun keyinga surish' — vazifa muddatini +1 kunga siljitadi (bir marta)."""
+    query = update.callback_query
+    uid = query.from_user.id
+    today = today_local()
+    cyc = rotation.cycle_start(today)
+    a = await db.get_assignment(uid, cyc)
+    if not a or a["status"] != "assigned":
+        await query.answer("Kechiktirish uchun faol vazifa yo'q.", show_alert=True)
+        return
+    if a["postponed"]:
+        await query.answer("Bu vazifa allaqachon bir kun keyinga surilgan.", show_alert=True)
+        return
+    if today > cyc + dt.timedelta(days=1):
+        await query.answer("Muddat o'tib ketgan — kechiktirib bo'lmaydi.", show_alert=True)
+        return
+    await db.set_assignment_postponed(a["id"])
+    newdl = cyc + dt.timedelta(days=2)
+    await query.answer("Bir kun keyinga surildi ✅")
+    try:
+        await query.edit_message_text(
+            query.message.text_html +
+            f"\n\n⏳ <b>Bir kun keyinga surildi.</b>\n"
+            f"Yangi muddat: <b>{fmt_short(newdl)} 05:00</b> gacha.",
+            parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
 
 
 # =================== Foydalanuvchi buyruqlari ===================
@@ -1508,20 +1541,13 @@ async def on_test_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 # =================== Jadval (JobQueue) ===================
 async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """05:00: viloyatdan qaytganlarni belgilash + sikl boshi bo'lsa taqsimot."""
+    """05:00: sikl boshi bo'lsa vazifa taqsimoti.
+
+    Viloyatdan qaytish AVTOMATIK emas — a'zo 'viloyatdan qaytdim' ni o'zi bosadi.
+    """
     today = today_local()
 
-    # 1) Viloyatdan qaytganlar (har kuni) — 2 joy penaltysi
-    for r in await db.get_residents_returning_on(today):
-        await db.clear_away(r["telegram_id"])
-        await db.set_return_penalty(r["telegram_id"], 1)
-        try:
-            await context.bot.send_message(r["telegram_id"], texts.back_penalty_msg(),
-                                           parse_mode=ParseMode.HTML)
-        except Exception:
-            pass
-
-    # 2) Sikl boshi bo'lsa — vazifa taqsimoti
+    # Sikl boshi bo'lsa — vazifa taqsimoti
     if await tasks_paused() or rotation.before_start(today) or not rotation.is_cycle_start(today):
         return
 
@@ -1573,8 +1599,13 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                     f"🧹 Vazifangiz: <b>{task}</b>\n"
                     f"⏰ Hisobot muddati: <b>{fmt_short(deadline)} 05:00</b> gacha.\n\n"
                     + details + note)
+        kb = None
+        if not (rec and rec["proxy_uid"]):
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton(
+                "⏳ Bir kun keyinga surish", callback_data="pp")]])
         try:
-            m = await context.bot.send_message(chat, body, parse_mode=ParseMode.HTML)
+            m = await context.bot.send_message(chat, body, parse_mode=ParseMode.HTML,
+                                               reply_markup=kb)
             await db.set_assignment_msg(aid, chat, m.message_id)
         except Exception as e:
             logger.warning("Sikl xabari yuborilmadi %s: %s", uid, e)
@@ -1649,8 +1680,8 @@ async def job_predeadline(context: ContextTypes.DEFAULT_TYPE) -> None:
     if rotation.before_start(base) or not rotation.is_cycle_start(base):
         return
     for a in await db.get_cycle_assignments(base):
-        if a["status"] not in ("assigned",):
-            continue
+        if a["status"] not in ("assigned",) or a["postponed"]:
+            continue  # kechiktirilgan bo'lsa muddat +1 kun — hali eslatma vaqti emas
         rec = await db.get_resident(a["telegram_id"])
         msg = texts.predeadline_msg(a["areas"], texts.task_details(a["areas"]))
         if rec:
@@ -1672,13 +1703,20 @@ async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
     gid = await db.get_setting("group_chat_id")
 
     # base = vazifa berilgan kun (sikl boshi). today = base+1 (1-muddat) yoki base+2 (qo'shimcha 24h)
-    for delta, first in ((1, True), (2, False)):
+    for delta in (1, 2, 3):
         base = today - dt.timedelta(days=delta)
         if rotation.before_start(base) or not rotation.is_cycle_start(base):
             continue
         for a in await db.get_cycle_assignments(base):
             if a["status"] not in ("assigned", "missed"):
                 continue  # reported/approved — jarima yo'q
+            # Kechiktirilgan bo'lsa muddat +1 kun siljiydi:
+            #   oddiy: 1-jarima D+1, 2-jarima D+2
+            #   kechiktirilgan: 1-jarima D+2, 2-jarima D+3
+            first_delta = 2 if a["postponed"] else 1
+            if delta < first_delta or delta > first_delta + 1:
+                continue
+            is_first = (delta == first_delta)
             uid = a["telegram_id"]
             await db.set_assignment_status(a["id"], "missed")
             if await db.has_fine(uid, today, "cleaning"):
@@ -1686,7 +1724,7 @@ async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
             await db.add_fine(uid, a["id"], FINE_AMOUNT,
                               f"Tozalik vazifasi bajarilmadi ({a['areas']})", today, "cleaning")
             note = ""
-            if first:
+            if is_first:
                 await db.incr_duty_debt(uid, 2)
                 await db.set_forced_task(uid, a["areas"])
                 note = texts.penalty_note(2) + "\n⏳ Yana 24 soat muhlat berildi."
@@ -1702,6 +1740,8 @@ async def job_deadline(context: ContextTypes.DEFAULT_TYPE) -> None:
         if asgs:
             done, notdone = [], []
             for a in asgs:
+                if a["postponed"] and a["status"] not in ("reported", "approved"):
+                    continue  # kechiktirilgan — muddati hali o'tmagan, natijaga qo'shmaymiz
                 tag = await tag_for(a["telegram_id"])
                 if a["status"] in ("reported", "approved"):
                     done.append((tag, a["areas"]))
@@ -1883,6 +1923,27 @@ async def post_init(app: Application) -> None:
             logger.info("reset_v11: hammasi nolga tushirildi (jarima/qarz/taqsimot tozalandi).")
         except Exception as e:
             logger.error("reset_v11 XATOSI (bot crash bo'lmaydi): %s", e)
+    # Bir martalik: 23-sentyabr roster'iga tayyorlash (Asadjonov / admin / Bunyod)
+    if await db.get_setting("reset_v12") is None:
+        try:
+            await db.ensure_active_resident(199906622, "Shaxzod Asadjonov")
+            await db.clear_away(199906622)
+            for _a in ADMIN_IDS:
+                await db.ensure_active_resident(_a, "Shahzod Tog'aymurodov")
+                await db.clear_away(_a)
+            bunyod = await db.find_resident_by_name("bunyod")
+            if bunyod:
+                await db.ensure_active_resident(bunyod["telegram_id"], bunyod["name"])
+                await db.clear_away(bunyod["telegram_id"])
+            # Toza start: navbatchilik qarzi/forced 0, eski taqsimotlar o'chadi
+            await db.reset_all_penalties()
+            await db.delete_all_assignments()
+            await db.set_setting("tasks_paused", None)
+            await db.set_setting("reset_v12", "done")
+            logger.info("reset_v12: 23-sentyabr roster tayyor. Bunyod=%s",
+                        bunyod["telegram_id"] if bunyod else "topilmadi")
+        except Exception as e:
+            logger.error("reset_v12 XATOSI (bot crash bo'lmaydi): %s", e)
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),
@@ -1920,6 +1981,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_checklist_toggle, pattern=r"^ck:"))
     app.add_handler(CallbackQueryHandler(on_report_button, pattern=r"^repx?:"))
     app.add_handler(CallbackQueryHandler(on_return_buttons, pattern=r"^back:"))
+    app.add_handler(CallbackQueryHandler(on_postpone, pattern=r"^pp$"))
     app.add_handler(CallbackQueryHandler(show_residents_week, pattern=r"^res7$"))
     app.add_handler(CallbackQueryHandler(show_task_distribution, pattern=r"^restasks$"))
     app.add_handler(CallbackQueryHandler(show_all_fines, pattern=r"^resfines$"))
