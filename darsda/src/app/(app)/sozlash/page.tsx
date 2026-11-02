@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { currentCourse } from "@/lib/course";
 import { getBrand, MODS, on } from "@/lib/platform";
+import { FONTS, journey } from "@/lib/journeys";
 import { Head, Progress } from "@/components/ui";
 import { CopyLink } from "@/components/Copy";
 
@@ -25,7 +26,8 @@ export default async function Sozlash() {
   const goals = c?.points.goals.length ?? 0;
   const mods = MODS.filter((m) => on(b, m.key)).length;
   const steps = [
-    { href: "/sozlash/brend", emoji: "🎨", t: "Brend", d: "Nom, logo, rang va o'quvchilar kiradigan havola", ok: !!b.settings.logo || b.color.toLowerCase() !== "#0b5d46" },
+    { href: "/sozlash/brend", emoji: "🏷️", t: "Brend", d: "Nom, logo va o'quvchilar kiradigan havola", ok: !!b.settings.logo || b.name.length > 1 },
+    { href: "/sozlash/dizayn", emoji: "🎨", t: "Dizayn", d: `Rang, shrift (${FONTS.find((f) => f.key === (b.settings.font ?? ""))?.name ?? "Standart"}) va animatsiya: ${journey(b.settings.journey).title}`, ok: !!(b.settings.journey || b.settings.font) || b.color.toLowerCase() !== "#0b5d46" },
     { href: "/sozlash/kurs", emoji: "📚", t: "Kurs tuzilmasi", d: c ? `«${c.title}» · ${s.courses} ta kurs` : "Kurs yarating: jadval, namuna yoki nusxa", ok: !!c },
     { href: "/darslar", emoji: "🎬", t: "Darslar va vazifalar", d: `${s.lessons} ta dars · ${s.tasks} ta vazifa — mavzu, video, material, muddat`, ok: s.lessons > 0 && s.tasks > 0 },
     { href: "/sozlash/ballar", emoji: "🎯", t: "Ball tizimi va maqsadlar", d: goals ? `${goals} ta maqsad · davomat ballari` : "Davomat ballari, mukofot maqsadlari", ok: goals > 0 },

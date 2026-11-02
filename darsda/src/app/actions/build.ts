@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { getBrand, MODS, okColor, type Settings } from "@/lib/platform";
 import { seedDemoCourse } from "@/lib/demo";
+import { FONTS, JOURNEYS } from "@/lib/journeys";
 import { localToUtc } from "@/lib/util";
 import type { FormState } from "./auth";
 
@@ -34,7 +35,7 @@ export async function saveBrand(_: FormState, fd: FormData): Promise<FormState> 
   const settings: Settings = { ...b.settings, welcome: str(fd.get("welcome"), 300) };
   if (fd.get("logo_remove") === "1") delete settings.logo;
   else if (logo.startsWith("data:image/") && logo.length < 200_000) settings.logo = logo;
-  await sql`update platforms set name = ${name}, slug = ${slug}, color = ${okColor(String(fd.get("color")))}, settings = ${sql.json(settings)} where id = ${b.id}`;
+  await sql`update platforms set name = ${name}, slug = ${slug}, settings = ${sql.json(settings)} where id = ${b.id}`;
   revalidatePath("/", "layout");
   return { ok: "Saqlandi" };
 }
@@ -52,6 +53,21 @@ export async function saveMods(_: FormState, fd: FormData): Promise<FormState> {
   await sql`update platforms set settings = ${sql.json({ ...b.settings, mods, labels })} where id = ${b.id}`;
   revalidatePath("/", "layout");
   return { ok: "Saqlandi" };
+}
+
+export async function saveDesign(_: FormState, fd: FormData): Promise<FormState> {
+  const { b } = await admin();
+  const font = String(fd.get("font") || "");
+  const jr = String(fd.get("journey") || "kosmos");
+  const settings: Settings = {
+    ...b.settings,
+    font: FONTS.some((f) => f.key === font) ? font : "",
+    journey: JOURNEYS.some((j) => j.key === jr) ? jr : "kosmos",
+    tint: fd.get("tint") === "on",
+  };
+  await sql`update platforms set color = ${okColor(String(fd.get("color")))}, settings = ${sql.json(settings)} where id = ${b.id}`;
+  revalidatePath("/", "layout");
+  return { ok: "Saqlandi — o'quvchilar ham shu ko'rinishni ko'radi" };
 }
 
 /** Yangi kurs: bo'sh jadval, RM 6.0 namunasi yoki mavjud kursdan nusxa */

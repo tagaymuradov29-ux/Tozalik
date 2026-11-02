@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { login } from "@/app/actions/auth";
-import { brandBySlug, brandCss } from "@/lib/platform";
+import { brandBySlug } from "@/lib/platform";
+import { BrandStyle } from "@/components/BrandStyle";
 import { ActionForm, Submit } from "@/components/Form";
 
 type P = { params: Promise<{ slug: string }> };
@@ -20,7 +21,7 @@ export default async function BrandLogin({ params }: P) {
   if (u) redirect(u.platform_id ? "/" : "/super");
   return (
     <main className="page plain" style={{ minHeight: "100dvh", justifyContent: "center" }}>
-      <style dangerouslySetInnerHTML={{ __html: brandCss(b.color) }} />
+      <BrandStyle b={b} />
       <div className="stack" style={{ alignItems: "center", marginBottom: 12, textAlign: "center" }}>
         {b.settings.logo
           // eslint-disable-next-line @next/next/no-img-element

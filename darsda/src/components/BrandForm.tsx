@@ -3,7 +3,6 @@ import { useState } from "react";
 import { ActionForm, Submit } from "./Form";
 import { saveBrand } from "@/app/actions/build";
 
-const PRESETS = ["#3390EC", "#0B5D46", "#7B3FE4", "#E0463E", "#F08C00", "#0E9AA7", "#1F3864", "#C2185B", "#111827"];
 
 /** Logoni telefonda 256px gacha kichraytiradi va matn (data:) ko'rinishida yuboradi */
 async function shrink(f: File): Promise<string> {
@@ -16,7 +15,7 @@ async function shrink(f: File): Promise<string> {
 }
 
 export function BrandForm({ name, slug, color, welcome, logo }: { name: string; slug: string; color: string; welcome: string; logo?: string }) {
-  const [c, setC] = useState(color);
+  const c = color;
   const [n, setN] = useState(name);
   const [lg, setLg] = useState(logo ?? "");
   const [w, setW] = useState(welcome);
@@ -43,17 +42,6 @@ export function BrandForm({ name, slug, color, welcome, logo }: { name: string; 
       <label className="field"><span>Kirish sahifasidagi matn</span><textarea className="input" name="welcome" rows={2} maxLength={300} value={w} onChange={(e) => setW(e.target.value)} placeholder="Masalan: Real Marketing 6.0 o'quvchilari uchun" /></label>
 
       <div className="field">
-        <span>Asosiy rang</span>
-        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          {PRESETS.map((p) => (
-            <button key={p} type="button" onClick={() => setC(p)} aria-label={p}
-              style={{ width: 32, height: 32, borderRadius: 10, background: p, border: c.toLowerCase() === p.toLowerCase() ? "3px solid var(--ink)" : "2px solid var(--line)", cursor: "pointer" }} />
-          ))}
-          <input type="color" name="color" value={c} onChange={(e) => setC(e.target.value)} style={{ width: 44, height: 34, padding: 2, border: "1px solid var(--line)", borderRadius: 10, background: "var(--card)" }} />
-        </div>
-      </div>
-
-      <div className="field">
         <span>Logo (kvadrat rasm yaxshi chiqadi)</span>
         <div className="row" style={{ gap: 8 }}>
           <label className="btn sm soft" style={{ cursor: "pointer" }}>
@@ -65,6 +53,7 @@ export function BrandForm({ name, slug, color, welcome, logo }: { name: string; 
         <input type="hidden" name="logo" value={lg.startsWith("data:") && lg !== logo ? lg : ""} />
         <input type="hidden" name="logo_remove" value={rm ? "1" : ""} />
       </div>
+      <p className="tiny muted" style={{ margin: 0 }}>Rang, shrift va ballar animatsiyasi — «🎨 Dizayn» bo&apos;limida.</p>
       <Submit>Saqlash</Submit>
     </ActionForm>
   );

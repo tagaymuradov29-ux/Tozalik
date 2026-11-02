@@ -1,14 +1,15 @@
 import { sql } from "@/lib/db";
 import { join } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/Form";
-import { brandCss, type Settings } from "@/lib/platform";
+import type { Settings } from "@/lib/platform";
+import { BrandStyle } from "@/components/BrandStyle";
 
 const ROLE: Record<string, string> = { student: "o'quvchi", curator: "kurator", admin: "administrator" };
 
 export default async function JoinPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const [inv] = await sql<{ role: string; platform: string; color: string; settings: Settings; group_name: string | null; course: string | null }[]>`
-    select i.role, p.name as platform, p.color, p.settings, g.name as group_name, c.title as course
+  const [inv] = await sql<{ role: string; platform: string; platform_id: number; slug: string; color: string; settings: Settings; group_name: string | null; course: string | null }[]>`
+    select i.role, p.name as platform, p.id as platform_id, p.slug, p.color, p.settings, g.name as group_name, c.title as course
     from invites i join platforms p on p.id = i.platform_id
     left join groups g on g.id = i.group_id left join courses c on c.id = g.course_id
     where i.code = ${code} and i.active`;
@@ -18,7 +19,7 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
         <div className="card"><p className="err">Bu taklif havolasi eskirgan yoki noto&apos;g&apos;ri.</p></div>
       ) : (
         <>
-          <style dangerouslySetInnerHTML={{ __html: brandCss(inv.color) }} />
+          <BrandStyle b={{ id: inv.platform_id, slug: inv.slug, name: inv.platform, color: inv.color, settings: inv.settings }} />
           <div className="stack" style={{ marginBottom: 6 }}>
             <div className="row" style={{ gap: 10 }}>
               {inv.settings?.logo && (

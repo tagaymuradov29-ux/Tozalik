@@ -6,6 +6,7 @@ import { studentCtx } from "@/lib/student";
 import { flightData } from "@/lib/space";
 import { Head } from "@/components/ui";
 import { Flight, FlightLegend } from "@/components/Flight";
+import { journey } from "@/lib/journeys";
 
 /** 🚀 Bozorga parvoz: ballar — raketa balandligi. Xodim ?u=<id> bilan o'z o'quvchisinikini ko'radi. */
 export default async function Parvoz({ searchParams }: { searchParams: Promise<{ u?: string }> }) {
@@ -23,13 +24,15 @@ export default async function Parvoz({ searchParams }: { searchParams: Promise<{
   const ctx = await studentCtx(u, uid);
   if (!ctx) redirect("/");
   const F = await flightData(ctx, uid);
+  const j = journey(b?.settings.journey);
+  const low = (x: string) => x.charAt(0) + x.slice(1).toLowerCase();
   const sat = F.A.filter((a) => a.st === "done").length, given = F.A.filter((a) => a.st !== "locked").length;
   return (
     <main className="page">
-      <Head title={`🚀 ${label(b, "parvoz")}`} back={who ? `/oquvchi/${uid}` : "/"} sub={who || undefined} />
+      <Head title={`${j.emoji} ${label(b, "parvoz")}`} back={who ? `/oquvchi/${uid}` : "/"} sub={who || undefined} />
       <div className="card">
         <div className="tiny sub">
-          Raketa ballaringiz bilan ko&apos;tariladi: <b>{F.orbit.pts}</b> ballda orbitaga chiqasiz ({F.orbit.label}), <b>{F.moon.pts}</b> da Oyga qo&apos;nasiz ({F.moon.label}).
+          {j.who} ballaringiz bilan ko&apos;tariladi: <b>{F.orbit.pts}</b> ballda «{low(j.lines[3])}»ga yetasiz ({F.orbit.label}), <b>{F.moon.pts}</b> da «{low(j.lines[4])}» ({F.moon.label}).
         </div>
         <div className="grid3">
           <div className="stat"><b>{F.pts}</b><span className="tiny muted">ball</span></div>
@@ -37,10 +40,10 @@ export default async function Parvoz({ searchParams }: { searchParams: Promise<{
           <div className="stat"><b>{sat}/{given}</b><span className="tiny muted">amaliy</span></div>
         </div>
       </div>
-      <Flight F={F} />
+      <Flight F={F} theme={j.key} />
       <div className="card">
         <FlightLegend />
-        <div className="tiny muted">O&apos;ngdagi yoqilg&apos;i shkalasi — {F.L.length} ta dars, har birida davomat va vazifa kataklari. Sun&apos;iy yo&apos;ldoshlar — amaliy vazifalar.</div>
+        <div className="tiny muted">O&apos;ngdagi «{low(j.gauge)}» shkalasi — {F.L.length} ta dars, har birida davomat va vazifa kataklari. {j.sat} belgilari — amaliy vazifalar.</div>
       </div>
       <div className="card">
         <h2 className="h2">📊 Ballar tarkibi</h2>

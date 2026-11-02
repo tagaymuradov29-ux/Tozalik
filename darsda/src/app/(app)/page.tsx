@@ -7,6 +7,7 @@ import { Roadmap, RoadLegend } from "@/components/Roadmap";
 import { journal } from "@/lib/progress";
 import { flightData, skyData } from "@/lib/space";
 import { getBrand, label, on, type Brand } from "@/lib/platform";
+import { journey } from "@/lib/journeys";
 import { SkyMini } from "@/components/Sky";
 import { fmtDay, fmtTime } from "@/lib/util";
 import { Head, Progress, RowLink, Avatar } from "@/components/ui";
@@ -114,8 +115,8 @@ async function StudentHome({ u }: { u: User }) {
         </div>
       )}
 
-      {on(b, "parvoz") && <Link href="/parvoz" className="card space-card flight">
-        <span className="emo">🚀</span>
+      {on(b, "parvoz") && <Link href="/parvoz" className="card space-card flight" style={{ background: `linear-gradient(135deg, ${journey(b?.settings.journey).banner[0]}, ${journey(b?.settings.journey).banner[1]})` }}>
+        <span className="emo">{journey(b?.settings.journey).emoji}</span>
         <div className="grow">
           <b>Ballarim · {label(b, "parvoz")}</b>
           <div className="tiny" style={{ opacity: 0.85 }}>{F.pts} ball · {F.done}/{F.total} vazifa · {sat} ta amaliy</div>

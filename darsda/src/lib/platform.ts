@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { sql } from "./db";
+import { FONTS, journey } from "./journeys";
 
 /** Yoqib-o'chiriladigan modullar. Har bir mijoz o'ziga keraklisini tanlaydi va nomini o'zgartira oladi. */
 export const MODS = [
@@ -18,8 +19,9 @@ export type Settings = {
   welcome?: string;       // kirish sahifasidagi matn
   mods?: Partial<Record<ModKey, boolean>>;
   labels?: Partial<Record<ModKey, string>>;
-  orbit?: string;         // Bozorga parvoz: orbita va Oy belgilari
-  moon?: string;
+  font?: string;          // FONTS dagi kalit ("" — standart)
+  journey?: string;       // ballar animatsiyasi varianti (JOURNEYS)
+  tint?: boolean;         // fon platforma rangida biroz bo'yalgan
 };
 
 export type Brand = { id: number; slug: string; name: string; color: string; settings: Settings };
@@ -38,17 +40,25 @@ export const brandBySlug = cache(async (slug: string): Promise<Brand | null> => 
 /** Modul yoqilganmi (sukut bo'yicha — hammasi yoqilgan) */
 export const on = (b: Brand | null, k: ModKey) => b?.settings?.mods?.[k] !== false;
 /** Modulning mijoz bergan nomi yoki asl nomi */
-export const label = (b: Brand | null, k: ModKey) => b?.settings?.labels?.[k]?.trim() || MODS.find((m) => m.key === k)!.label;
+export const label = (b: Brand | null, k: ModKey) =>
+  b?.settings?.labels?.[k]?.trim() || (k === "parvoz" ? journey(b?.settings?.journey).title : MODS.find((m) => m.key === k)!.label);
+
+/** Tanlangan shrift (Google Fonts nomi) yoki bo'sh */
+export const fontOf = (b: Brand | null) => FONTS.find((f) => f.key === b?.settings?.font)?.family ?? "";
 
 export const okColor = (c: string | null | undefined) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : "#3390EC");
 
 /** Platforma rangini butun ilovaga qo'llaydigan CSS (kunduzgi va tungi rejim uchun) */
-export function brandCss(color: string) {
+export function brandCss(color: string, font = "", tint = false) {
   const c = okColor(color);
-  const dark = `--brand: color-mix(in srgb, ${c} 78%, #fff); --brand-ink: color-mix(in srgb, ${c} 55%, #fff);
+  const f = font ? `:root:root:root { --font: "${font.replace(/[^a-zA-Z ]/g, "")}", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }` : "";
+  const bgL = tint ? `--bg: color-mix(in srgb, ${c} 6%, #f4f6f9);` : "";
+  const bgD = tint ? `--bg: color-mix(in srgb, ${c} 10%, #0d1220);` : "";
+  const dark = `${bgD} --brand: color-mix(in srgb, ${c} 78%, #fff); --brand-ink: color-mix(in srgb, ${c} 55%, #fff);
     --brand-soft: color-mix(in srgb, ${c} 24%, #161d2f); --fab: var(--brand); --blue: var(--brand-ink); --blue-soft: var(--brand-soft);`;
-  return `:root { --brand: ${c}; --brand-ink: color-mix(in srgb, ${c} 80%, #000); --brand-soft: color-mix(in srgb, ${c} 11%, #fff);
-    --chart-on: ${c}; --blue: var(--brand-ink); --blue-soft: var(--brand-soft); }
+  return `${f} :root { ${bgL} --brand: ${c}; --brand-ink: color-mix(in srgb, ${c} 80%, #000); --brand-soft: color-mix(in srgb, ${c} 11%, #fff);
+    --chart-on: ${c}; --blue: var(--brand-ink); --blue-soft: var(--brand-soft);
+    --fab: color-mix(in srgb, ${c} 72%, #000); --fab-shadow: color-mix(in srgb, ${c} 40%, transparent); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ${dark} } }
   :root[data-theme="dark"] { ${dark} }`;
 }

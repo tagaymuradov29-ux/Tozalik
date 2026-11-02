@@ -4,7 +4,8 @@ import { backToSuper } from "@/app/actions/auth";
 import { sql } from "@/lib/db";
 import { Nav } from "@/components/Nav";
 import { SW } from "@/components/SW";
-import { brandCss, getBrand, on } from "@/lib/platform";
+import { getBrand, on } from "@/lib/platform";
+import { BrandStyle } from "@/components/BrandStyle";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const u = await requireUser();
@@ -22,7 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [back, b] = await Promise.all([getSigned<{ uid: number }>("back"), getBrand(u.platform_id)]);
   return (
     <div>
-      {b && <style dangerouslySetInnerHTML={{ __html: brandCss(b.color) }} />}
+      <BrandStyle b={b} />
       {back && (
         <form action={backToSuper} className="superbar">
           <span>👑 {u.platform_name} · admin sifatida</span>

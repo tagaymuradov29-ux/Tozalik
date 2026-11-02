@@ -290,8 +290,8 @@ details > summary::-webkit-details-marker { display: none; }
 
 /* ---------- Kosmos kartalari: Tanishuvlar osmoni, Bozorga parvoz ---------- */
 .space-card { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 12px 14px; color: #fff !important; border: 0 !important;
-  background: linear-gradient(135deg, #16244F, #0B1430) !important; }
-.space-card.flight { background: linear-gradient(135deg, #0B1430, #2F5E9E) !important; }
+  background: linear-gradient(135deg, #16244F, #0B1430); }
+.space-card.flight { background: linear-gradient(135deg, #0B1430, #2F5E9E); }
 .space-card .emo { font-size: 28px; line-height: 1; width: 56px; text-align: center; flex: none; }
 .sky-box { position: relative; border-radius: 14px; overflow: hidden; aspect-ratio: 1 / 1.05;
   background: radial-gradient(120% 90% at 50% 40%, #16244F, #0B1430); }
