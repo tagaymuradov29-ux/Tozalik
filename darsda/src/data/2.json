@@ -1,0 +1,426 @@
+{
+ "n": 2,
+ "title": "2-dars · Katta chekga marketing loyiha olish",
+ "goal": "Bu dars orqali siz loyiha topishning 6 ta kanalini, target kreativ formulalarini, sotuvchi SMS yozishni, loyihaga filtr qo‘yishni va sotishning 12 qadamini o‘rganib, amalda qo‘llaysiz. Har bo‘limda avval nazariyani o‘qing, keyin mashqlarni o‘z loyihangiz va real raqamlaringiz bilan to‘ldiring. Workbook — 20 ball.",
+ "sections": [
+  {
+   "t": "Bozor tahlili",
+   "quote": "«Ko‘p loyiha emas — katta chekli loyiha oling.»",
+   "theory": [
+    "<b>O‘zbekistondagi yetakchi agentliklar</b><table><tr><th>Agentlik</th><th>Xodimlar</th><th>Loyihalar</th><th>O‘rtacha chek</th><th>Mahsulotlar</th><th>Aylanma</th></tr><tr><td>Foyda Marketing</td><td>45 ta</td><td>27 ta</td><td>3 700$</td><td>Complex marketing 5 000$, Performance marketing 3 000$</td><td>~100 000$/oy</td></tr><tr><td>Obsess Marketing</td><td>25 ta</td><td>21 ta</td><td>2 500$</td><td>Digital 3 500$, Performance 2 500$, Leadgen 1,5$ har bir lead uchun</td><td>~53 000$/oy</td></tr><tr><td>ABBA Marketing</td><td>70 ta</td><td>100 ta</td><td>1 500$</td><td>Digital 2 500$, SMM 1 500$, Branding 2 000$, Sayt 1 500$</td><td>150 000$/oy</td></tr></table><p><b>E’tibor bering:</b> Foyda 27 ta loyiha bilan ~100 000$ qiladi, ABBA esa 100 ta loyiha bilan 150 000$. Chek katta bo‘lsa, kam loyiha bilan ham katta daromad bo‘ladi.</p>",
+    "<b>Marketing bozori hajmi qanday hisoblanadi (14 hudud)</b><ul><li>Tadbirkorlik subyektlari — 393 898 ta.</li><li>Aniq faoliyat yuritayotgani (70%) — 275 729 ta.</li><li>Marketing yuritadigani (10%) — 27 573 ta.</li><li>O‘rtacha chek: Toshkent sh., Toshkent v., Samarqand, Farg‘ona, Buxoro — 1 000$; qolgan hududlar — 500$. O‘rtacha muddat — 6 oy.</li></ul><table><tr><th>Ko‘rsatkich</th><th>Raqam</th></tr><tr><td>TAM — umumiy bozor</td><td>128 293 200$</td></tr><tr><td>SAM — ishlashga tayyor (50%)</td><td>64 146 600$</td></tr><tr><td>SOM — haqiqiy ulush (5%)</td><td>3 207 330$</td></tr><tr><td>Toshkent shahri SOM</td><td>939 792$</td></tr><tr><td>Toshkent viloyati SOM</td><td>370 041$</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "bq1",
+     "t": "area",
+     "l": "Sizning agentligingiz yoki ko‘rsatayotgan xizmat turingiz qaysi agentlik modeliga o‘xshaydi? (Foyda / Obsess / ABBA)"
+    },
+    {
+     "k": "bq2",
+     "t": "area",
+     "l": "Hozirgi o‘rtacha chekingiz qancha va uni qanchaga yetkazmoqchisiz?"
+    },
+    {
+     "k": "bq3",
+     "t": "area",
+     "l": "Chekni oshirish uchun qaysi mahsulotni qo‘shasiz (complex, performance, leadgen …)?"
+    },
+    {
+     "k": "bq4",
+     "t": "area",
+     "l": "Eski o‘quvchilar natijalaridan qaysi biri sizni ko‘proq ilhomlantirdi va nega?"
+    }
+   ]
+  },
+  {
+   "t": "Loyiha topish — 6 ta kanal · Tanish-bilish",
+   "quote": "«Loyiha topish — kutib o‘tirish emas, faol harakat qilish.»",
+   "theory": [
+    "<b>6 ta loyiha topish kanali</b><table><tr><th>#</th><th>Kanal</th><th>Tafsilot</th></tr><tr><td>1</td><td>Tanish-bilish</td><td>Mijozingiz va do‘stlaringiz tavsiyasi orqali</td></tr><tr><td>2</td><td>Ish beruvchi platformalar</td><td>HeadHunter (hh.uz)</td></tr><tr><td>3</td><td>Telegram communitylar</td><td>Marketing va biznes guruhlari</td></tr><tr><td>4</td><td>Shaxsiy brend</td><td>5 xil kontent orqali ishonch qozonish</td></tr><tr><td>5</td><td>Research qilish</td><td>Kuchli nichengizda Instagram orqali qidiruv</td></tr><tr><td>6</td><td>Target</td><td>Reklama kreativlari orqali</td></tr></table>",
+    "<b>2.1 Tanish-bilish</b><ul><li>O‘zingiz ishlayotgan loyihaning biznes egasi sizni tavsiya qilib, stories qo‘yib bersin.</li><li>Reels uchun kreativ tayyorlang.</li><li>10 ta do‘stingizdan stories’da ulashishni va sizni maxsus taklif bilan tavsiya qilishini so‘rang.</li><li>10 ta do‘st × 100 ta ohvat = 1 000 ta inson ko‘radi.</li><li>Kamida 5 ta potensial mijoz topish ehtimoli bor.</li></ul>"
+   ],
+   "f": [
+    {
+     "k": "tb",
+     "t": "table",
+     "l": "Mashq — tanish-bilish rejangiz",
+     "cols": [
+      "Sizning harakatingiz"
+     ],
+     "rows": [
+      "Sizni tavsiya qila oladigan hozirgi/eski mijozingiz kim?",
+      "Unga yuboradigan iltimos matningiz",
+      "Shaxsiy brend boshlaganingizda pozitsiyangiz qanday bo‘ladi? Reels mavzusi nima bo‘ladi?",
+      "Do‘stlaringiz o‘z auditoriyasiga beradigan maxsus taklif qanday bo‘ladi?",
+      "Qachon boshlaysiz?"
+     ]
+    }
+   ]
+  },
+  {
+   "t": "Ish platformalari va Telegram communitylar",
+   "quote": "«Mijoz sizni o‘zi topmaydi — siz uni turgan joyida topasiz.»",
+   "theory": [
+    "<b>2.2 Ish beruvchi platformalar</b><ul><li>HeadHunter’da ro‘yxatdan o‘ting va rezyume kiriting.</li><li>Vakansiyalarga javob bering.</li><li>Hozirgi vaqtda marketing bo‘yicha 1 142 ta, SMM bo‘yicha 348 ta vakansiya bor.</li></ul>",
+    "<b>2.3 Telegram communitylar — asosiy guruhlar</b><ul><li>@PRUzb</li><li>@marketologlar_guruhi</li><li>@smm_jobs_uz</li><li>@marketologlar_choyxonasi</li><li>@uzbmarketingmeetups</li><li>Ministry of Marketing</li><li>@marketingdaishla</li></ul>"
+   ],
+   "f": [
+    {
+     "k": "hh1",
+     "t": "area",
+     "l": "HeadHunter’da profilingiz bormi? (havola)"
+    },
+    {
+     "k": "hh2",
+     "t": "area",
+     "l": "Rezyumengiz to‘liq to‘ldirilganmi?"
+    },
+    {
+     "k": "hh3",
+     "t": "area",
+     "l": "Qaysi 5 ta vakansiyaga javob berasiz?"
+    },
+    {
+     "k": "tg1",
+     "t": "area",
+     "l": "Qaysi Telegram guruhlarga a’zo bo‘ldingiz?"
+    },
+    {
+     "k": "tg2",
+     "t": "text",
+     "l": "Bu hafta guruhlarda nechta so‘rovga javob berdingiz?"
+    }
+   ]
+  },
+  {
+   "t": "Shaxsiy brend va research",
+   "quote": "«Ishonch — kontent orqali quriladi.»",
+   "theory": [
+    "<b>2.4 Shaxsiy brend — ishonchni oshiradigan 5 xil kontent</b><ol><li>Sohaga oid bilimlar berish.</li><li>Sohaga oid muammolarga yechim berish.</li><li>Sohaga oid shaxsiy fikrlar.</li><li>Keys va natijalarni ochib berish.</li><li>Mijoz fikrlari.</li></ol>",
+    "<b>2.5 Research qilish</b><p>O‘zingiz kuchli bo‘lgan nicheni tanlaysiz → Instagram orqali shu nichedagi bizneslarni qidirasiz → aloqaga chiqish uchun ro‘yxat tuzasiz.</p>"
+   ],
+   "f": [
+    {
+     "k": "sb",
+     "t": "table",
+     "l": "Mashq — shaxsiy brend rejangiz",
+     "cols": [
+      "Mavzu",
+      "Qachon"
+     ],
+     "rows": [
+      "Bilim berish",
+      "Muammoga yechim",
+      "Shaxsiy fikr",
+      "Keys / natija",
+      "Mijoz fikri"
+     ]
+    },
+    {
+     "k": "rs1",
+     "t": "area",
+     "l": "Siz kuchli bo‘lgan niche"
+    },
+    {
+     "k": "rs2",
+     "t": "area",
+     "l": "Instagram’da qanday qidirasiz (heshteg, kalit so‘z, geolokatsiya)?"
+    },
+    {
+     "k": "rs3",
+     "t": "area",
+     "l": "Topilgan 10 ta biznes (nomi va profili)"
+    }
+   ]
+  },
+  {
+   "t": "Target kreativlari",
+   "quote": "«Eng zo‘r ishlaydigan kreativ — mijoz fikri.»",
+   "theory": [
+    "<b>2.6 Target uchun ssenariy 3 xil bo‘ladi</b><table><tr><th>#</th><th>Ssenariy turi</th><th>Nimani ko‘rsatadi</th></tr><tr><td>1</td><td>Mijoz otzivi</td><td>Mijoz A nuqtadan B nuqtaga qanday kelgani</td></tr><tr><td>2</td><td>Sotuvchi kreativ</td><td>Og‘riq → yechim → proof</td></tr><tr><td>3</td><td>B nuqtani ko‘rsatish</td><td>Mahsulotni olsa, natija qanday bo‘lishi</td></tr></table>",
+    "<b>Kreativ 1 — Og‘riq + Kutilma + Garantiya + Defitsit + CTA</b><table><tr><th>Element</th><th>Misol (Foyda Marketing)</th></tr><tr><td>Og‘riq</td><td>“Marketingga 2–3 ming $ sarflayapsiz, lekin natija bo‘lmayapti”</td></tr><tr><td>Kutilma</td><td>“Har oy 20 dan ortiq mijozlarimizga sotuvlarini 20% dan 3 barobargacha oshirib beryapmiz”</td></tr><tr><td>Garantiya</td><td>“Agar sizga ham natijalarga asoslangan marketing xizmatlari kerak bo‘lsa”</td></tr><tr><td>Defitsit</td><td>“Hoziroq quyidagi havola orqali ro‘yxatdan o‘ting va 5 ta bepul konsultatsiyadan…”</td></tr><tr><td>CTA</td><td>“…birining egasi bo‘ling”</td></tr></table>",
+    "<b>Kreativ 2 — Social proof + Keys + Kutilma + CTA</b><table><tr><th>Element</th><th>Misol (Foyda Marketing)</th></tr><tr><td>Social proof</td><td>“Bito ERP tizimiga har oy 100 lab yangi mijozlar orqali kompaniyaga 100 000$+ oylik savdo olib keldik”</td></tr><tr><td>Keys</td><td>“Bito ERP bilan ishni boshlagan vaqtimiz sotuvlari past edi”</td></tr><tr><td>Kutilma</td><td>“To‘g‘ri marketing strategiya tuzib, sotuvlarini birinchi oyning o‘zida 2x ga oshirib berdik”</td></tr><tr><td>CTA</td><td>“Sizga ham natijalarga asoslangan marketing kerak bo‘lsa, havola orqali ro‘yxatdan o‘ting”</td></tr></table>",
+    "<b>Kreativ 3 — Og‘riq + Avtoritet + Social proof + USP + CTA</b><table><tr><th>Element</th><th>Misol (Foyda Marketing)</th></tr><tr><td>Og‘riq</td><td>“Marketologlar bilan 4–5 oylab ishlayapsiz, lekin natija bo‘lmayaptimi?”</td></tr><tr><td>Avtoritet</td><td>“Foyda Marketing hozir 30 ga yaqin brendga marketing xizmatlarini ko‘rsatib kelyapti”</td></tr><tr><td>Social proof</td><td>“Crafers, ENOC, UPG, Adnur Logistika, Toretto, Loftbek kabi kompaniyalarga sotuvni oshirishga yordam berdik”</td></tr><tr><td>USP</td><td>“Sizga ham natijalari kafolatlangan marketing xizmatlari kerak bo‘lsa”</td></tr><tr><td>CTA</td><td>“Hoziroq quyidagi havola orqali ro‘yxatdan o‘ting”</td></tr></table>"
+   ],
+   "intro": "Mashq — o‘z loyihangiz uchun har bir formuladan 3 tadan, jami 9 ta kreativ yozing.",
+   "f": [
+    {
+     "k": "kr1",
+     "t": "table",
+     "l": "Formula 1 (Og‘riq + Kutilma + Garantiya + Defitsit + CTA)",
+     "cols": [
+      "Kreativ 1.1",
+      "Kreativ 1.2",
+      "Kreativ 1.3"
+     ],
+     "rows": [
+      "Og‘riq",
+      "Kutilma",
+      "Garantiya",
+      "Defitsit",
+      "CTA"
+     ]
+    },
+    {
+     "k": "kr2",
+     "t": "table",
+     "l": "Formula 2 (Social proof + Keys + Kutilma + CTA)",
+     "cols": [
+      "Kreativ 2.1",
+      "Kreativ 2.2",
+      "Kreativ 2.3"
+     ],
+     "rows": [
+      "Social proof",
+      "Keys",
+      "Kutilma",
+      "CTA"
+     ]
+    },
+    {
+     "k": "kr3",
+     "t": "table",
+     "l": "Formula 3 (Og‘riq + Avtoritet + Social proof + USP + CTA)",
+     "cols": [
+      "Kreativ 3.1",
+      "Kreativ 3.2",
+      "Kreativ 3.3"
+     ],
+     "rows": [
+      "Og‘riq",
+      "Avtoritet",
+      "Social proof",
+      "USP",
+      "CTA"
+     ]
+    },
+    {
+     "k": "kr4",
+     "t": "area",
+     "l": "Mijoz otzivi kreativi uchun qaysi mijozingizdan video olasiz? Uning A va B nuqtasi qanday?"
+    }
+   ]
+  },
+  {
+   "t": "Offer, og‘riq va lead filtr",
+   "quote": "«To‘g‘ri offer — uchrashuvga olib keladi.»",
+   "theory": [
+    "<b>2.7 Uchrashuv konversiyasini oshiradigan offerlar</b><ul><li>Bepul audit.</li><li>Bepul strategiya.</li><li>Risksiz garantiya: natija bo‘lmasa bepul / natijaga asoslangan KPI bo‘yicha ishlash.</li><li>Mijoz otzivi — retarget + offer.</li><li>Case study — retarget + offer.</li></ul>",
+    "<b>Mijozlardagi asosiy og‘riqlar</b><ul><li>Kommunikatsiya kamligi.</li><li>Deadline’ga amal qilmaslik.</li><li>ROMI o‘zini oqlamasligi (savdo yo‘q).</li><li>Aniq metrikalarni ko‘rsata olmaslik.</li></ul>",
+    "<b>Sifatli lead filtrlari</b><table><tr><th>Filtr</th><th>Kreativda qanday qo‘yiladi</th></tr><tr><td>Daromadli mijoz</td><td>“Marketingga X summa tikasiz, lekin natija yo‘q”</td></tr><tr><td>To‘g‘ri niche</td><td>Social proof qismida aynan shu nichega mos keys berish</td></tr><tr><td>Geografiya</td><td>“Biznesingiz yoki ofisingiz X joyda joylashgan”</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "of1",
+     "t": "area",
+     "l": "Hozir qaysi offerni ishlatyapsiz?"
+    },
+    {
+     "k": "of2",
+     "t": "area",
+     "l": "Qaysi offerdan boshlaysiz va nega?"
+    },
+    {
+     "k": "of3",
+     "t": "area",
+     "l": "Mijozlaringizdagi eng katta og‘riq qaysi?"
+    },
+    {
+     "k": "of4",
+     "t": "area",
+     "l": "Kreativingizga qaysi lead filtrini qanday qo‘yasiz? (aniq jumla)"
+    }
+   ]
+  },
+  {
+   "t": "Aloqaga chiqish — sotuvchi SMS",
+   "quote": "«Shablon SMS’dan hamma zerikkan. Peregovorni sotuvchi SMS yozing!»",
+   "theory": [
+    "<p>Loyihani qimmatga olish uchun avval aloqaga chiqish kerak. SMS’da o‘zingizni emas, mijozga beradigan natijani sotasiz.</p><table><tr><th>❌ Shablon SMS</th><th>✅ Sotuvchi SMS</th></tr><tr><td>O‘zi haqida gapiradi</td><td>Mijoz biznesi haqida gapiradi</td></tr><tr><td>Xizmatlar ro‘yxatini sanaydi</td><td>Aniq natija va’da qiladi</td></tr><tr><td>Hammaga bir xil</td><td>Qisqa, shaxsiy taklif beradi</td></tr></table><p><b>Formula:</b> salomlashish + mijozga natija + taklif → uchrashuv.</p>",
+    "<b>Misollar</b><ul><li>❌ Shablon: “Assalomu alaykum, men marketologman. Bizda targeting, SMM va dizayn xizmatlari bor, 1 yillik tajribamiz bor, biznesingizni rivojlantiramiz. Bizga aloqaga chiqing +998…”</li><li>✅ Misol 1: “Assalomu alaykum, yaxshimisiz? Menda o‘quv markazning sotuvini 1,5–2x ga oshiruvchi instrument bor. Sizga ma’qul kelsa, shu haqida gaplashib olamiz.”</li><li>✅ Misol 2: “Assalomu alaykum, yaxshimisiz? O‘quv markazingizni audit qilib chiqdim va 10 ta o‘sish nuqtasini topdim. Qiziq bo‘lsa, offline uchrashuv qilib sizga yordam bera olaman!”</li></ul><p>Proof: darsda shunday SMS’ga biznes egasi javob bergan real yozishma ko‘rsatildi.</p>"
+   ],
+   "f": [
+    {
+     "k": "sm",
+     "t": "table",
+     "l": "Mashq — o‘z loyihangiz uchun sotuvchi SMS",
+     "cols": [
+      "Sizning matningiz"
+     ],
+     "rows": [
+      "Qaysi biznesga yozasiz? (nomi, sohasi)",
+      "Salomlashish",
+      "Mijozga natija (nima bera olasiz? raqam bilan)",
+      "Taklif (uchrashuv, audit, strategiya …)"
+     ]
+    },
+    {
+     "k": "sm2",
+     "t": "area",
+     "l": "Tayyor SMS (to‘liq matn)"
+    }
+   ]
+  },
+  {
+   "t": "Loyihaga filtr qo‘yish",
+   "quote": "«Har loyihani olmang — avval filtrdan o‘tkazing.»",
+   "theory": [
+    "<b>Nega loyiha tanlayotganda filtr qo‘yish kerak?</b><table><tr><th>Sabab</th><th>Tushuntirish</th></tr><tr><td>Portfolioni buzmaslik</td><td>Yomon keys keyingi loyihalarga to‘siq bo‘ladi</td></tr><tr><td>Reputatsiyani ushlash</td><td>Bozorda ismingiz yaxshi saqlanadi</td></tr><tr><td>Stressni kamaytirish</td><td>Noto‘g‘ri mijoz — ortiqcha stress</td></tr><tr><td>Natija qilishning ko‘proq ehtimoli</td><td>To‘g‘ri mijoz = ko‘proq natija</td></tr><tr><td>Ko‘proq LTV</td><td>Mijoz siz bilan uzoqroq ishlaydi</td></tr><tr><td>Jamoani ushlab qolish</td><td>Stress kam bo‘lsa, xodimlar ketmaydi</td></tr></table>",
+    "<b>Filtr 1: Target qilish osonmi?</b> Keys: Turon Unlar.<table><tr><th>Target qilish qiyin bo‘lgan bizneslar</th><th>Misol</th></tr><tr><td>Traditsion bizneslar</td><td>Un biznesi, beton, qishloq xo‘jaligi mahsulotlari</td></tr><tr><td>B2B nishalar</td><td>Uskunalar ehtiyot qismlari, og‘ir texnikalar, xomashyo va kimyoviy moddalar</td></tr><tr><td>Qimmatbaho (luxury) mahsulotlar</td><td>Qimmat uy, xususiy yaxta</td></tr><tr><td>Mahalliy bizneslar</td><td>Faqat bitta filialga ega bizneslar</td></tr></table>",
+    "<b>Filtr 2: Biznes qachondan beri mavjud?</b> Keys: tozalik vositalari, taxi xizmati.<table><tr><th>Natija qilish qiyin bo‘lgan bizneslar</th><th>Muammo</th></tr><tr><td>Start-up’lar</td><td>Katta kutilmalar va mavhum ko‘rsatkichlar</td></tr><tr><td>SMART maqsadsizlar</td><td>A nuqtaga nisbatan B nuqtada 5–10x o‘sishni kichik vaqtda reja qilgan</td></tr><tr><td>A nuqtasi mavhum bizneslar</td><td>Raqamlar yo‘q, faqat yorqin kelajak haqida va’dalar</td></tr></table>",
+    "<b>Filtr 3: Biznes oldin marketolog bilan ishlaganmi?</b> Keys: skuter zavodi.<table><tr><th>Natija qilish qiyin bo‘lgan holat</th><th>Muammo</th></tr><tr><td>Siz biznesdagi 1-marketolog bo‘lsangiz</td><td>Yaxshi va yomon marketolog farqiga bormaydi</td></tr><tr><td>Tez-tez marketolog almashtirsa</td><td>Biznesda sabr yo‘q</td></tr><tr><td>Marketologdan hamma narsani kutsa</td><td>Tizimlashtirish, sotuv bo‘limi, ishga olish — hammasini kutadi</td></tr></table>",
+    "<b>Filtr 4: Biznesda marketingsiz ham stabil savdosi bormi?</b> Keys: Yess Snacks.<table><tr><th>Bunday biznes bilan ishlamang, agar…</th><th>Nega</th></tr><tr><td>Sof foydasi sizga to‘lanadigan ish haqidan 300% dan kam bo‘lsa</td><td>Sizga to‘lay olmaydi</td></tr><tr><td>Moliyaviy qarz yoki kreditlari bo‘lsa</td><td>Bo‘sh pul yo‘q</td></tr><tr><td>Mavsumiylik yuqori bo‘lsa</td><td>Doimiy daromad kafolatlanmagan</td></tr></table>",
+    "<b>+1 filtr (loyiha olgandan keyin): biznes egasining xarakteri</b><table><tr><th>Xarakter</th><th>Muammo</th></tr><tr><td>Marketingni sizdan yaxshi bilaman deb o‘ylaydi</td><td>Qarorlaringizga aralashadi</td></tr><tr><td>Mikromenejmentga aralashadi</td><td>Har qadamni nazorat qiladi</td></tr><tr><td>Perfeksionist</td><td>Hech narsa yetarli emas</td></tr><tr><td>Natijani video sifati va rasm kreativligi bilan o‘lchaydi</td><td>Noto‘g‘ri mezon: savdo emas, chiroy</td></tr><tr><td>Qarorlarini tez-tez o‘zgartiradi</td><td>Strategiya amalga oshmaydi</td></tr></table><p>Bu ma’lumotlarni brief olish orqali va peregovor vaqtida savollar bilan aniqlaymiz.</p>"
+   ],
+   "intro": "Mashq — hozirgi yoki potensial loyihangizni filtrlang.",
+   "f": [
+    {
+     "k": "fl0",
+     "t": "text",
+     "l": "Loyiha nomi va sohasi"
+    },
+    {
+     "k": "fl",
+     "t": "table",
+     "l": "Filtrlar",
+     "cols": [
+      "Javob (Ha / Yo‘q / Bilmayman)",
+      "Izoh (qanday aniqladingiz?)"
+     ],
+     "rows": [
+      "1. Target qilish osonmi?",
+      "2. Biznes qachondan beri mavjud? (necha yil)",
+      "3. Oldin marketolog bilan ishlaganmi? Nechta?",
+      "4. Marketingsiz ham stabil savdosi bormi?",
+      "+1. Biznes egasining xarakteri mosmi?"
+     ]
+    },
+    {
+     "k": "fq1",
+     "t": "area",
+     "l": "Bu loyiha bilan ishlash kerakmi? (yakuniy qaror)"
+    },
+    {
+     "k": "fq2",
+     "t": "area",
+     "l": "Agar ha — birinchi qadamingiz nima? Agar yo‘q — qaysi filtrdan o‘tmadi?"
+    },
+    {
+     "k": "fq3",
+     "t": "area",
+     "l": "Peregovorda biznes egasiga beradigan 3 ta savolingiz (filtrlarni aniqlash uchun)"
+    }
+   ]
+  },
+  {
+   "t": "Sotishning 12 qadami",
+   "quote": "«Peregovorni 12 qadam bilan o‘tkazing.»",
+   "theory": [
+    "<p>Model Russell Brunson’ga tayanadi — ClickFunnels avtovoronka platformasi rahbari (brend qiymati 360 mln $, 54 mln a’zo), DotCom Secrets, Traffic Secrets va Expert Secrets kitoblari muallifi.</p><ol><li>E’tibor tortish</li><li>Munosabat o‘rnatish (umumiy tanishlarni so‘rash).</li><li>Avtoritet o‘rnatish</li><li>Muammosini aniqlash</li><li>Yechim yetkazish</li><li>Kutilma o‘rnatish</li><li>Social proof (kompaniya keysi).</li><li>Afzalliklarni ko‘rsatish</li><li>Rad etib bo‘lmas taklif</li><li>Risksiz garantiya</li><li>Deadline o‘rnatish</li><li>Call to action</li></ol><p>Darsda 12 qadam call-center keysida jonli ko‘rsatildi.</p>"
+   ],
+   "f": [
+    {
+     "k": "et",
+     "t": "table",
+     "l": "Mashq — sotuvda qaysi e’tirozlarga javob berishga qiynalasiz?",
+     "cols": [
+      "E’tiroz",
+      "Hozirgi javobingiz",
+      "12 qadamdan qaysi biri yordam beradi?"
+     ],
+     "dyn": 3
+    },
+    {
+     "k": "ss0",
+     "t": "text",
+     "l": "Keyingi peregovor — mijoz (biznes nomi, sohasi)"
+    },
+    {
+     "k": "ss",
+     "t": "table",
+     "l": "Mashq — 12 qadamli ssenariy",
+     "cols": [
+      "Nima deysiz / nima qilasiz"
+     ],
+     "rows": [
+      "1. E’tibor tortish",
+      "2. Munosabat o‘rnatish",
+      "3. Avtoritet o‘rnatish",
+      "4. Muammosini aniqlash",
+      "5. Yechim yetkazish",
+      "6. Kutilma o‘rnatish",
+      "7. Social proof",
+      "8. Afzalliklarni ko‘rsatish",
+      "9. Rad etib bo‘lmas taklif",
+      "10. Risksiz garantiya",
+      "11. Deadline o‘rnatish",
+      "12. Call to action"
+     ]
+    }
+   ]
+  },
+  {
+   "t": "Yakuniy xulosa va harakat rejasi",
+   "quote": "«Loyiha topish — bir martalik emas, tizimli jarayon.»",
+   "theory": [
+    "<b>Dars xulosasi</b><ul><li>Ko‘p loyiha emas — katta chekli loyiha oling.</li><li>Loyihani 6 kanaldan toping.</li><li>Eng zo‘r kreativ — mijoz fikri.</li><li>SMS’da o‘zingizni emas, natijani soting.</li><li>Har loyihani olmang — avval filtrdan o‘tkazing.</li><li>Biznes egasining xarakteriga qarang.</li><li>Peregovorni 12 qadam bilan o‘tkazing.</li></ul>",
+    "<b>Amaliy vazifa va ballar</b><table><tr><th>Vazifa</th><th>Ball</th></tr><tr><td>10 ta peregovor o‘tkazish</td><td>50</td></tr><tr><td>Guruh ishi: leadgeneratsiya qilish</td><td>50</td></tr><tr><td>Test</td><td>20</td></tr><tr><td>Konspekt</td><td>10</td></tr><tr><td>Workbook</td><td>20</td></tr></table><p>Keyingi darsda: Performance marketing roadmap va qiymat berish.</p>"
+   ],
+   "f": [
+    {
+     "k": "yx1",
+     "t": "area",
+     "l": "Bugundan nimani boshqacha qilasiz?"
+    },
+    {
+     "k": "yx2",
+     "t": "area",
+     "l": "Dars sizga loyiha topish haqida eng muhim qanday fikr berdi?"
+    },
+    {
+     "k": "yx3",
+     "t": "area",
+     "l": "Loyiha tanlashda qaysi yangi filtrni qo‘shdingiz?"
+    },
+    {
+     "k": "yx4",
+     "t": "area",
+     "l": "Keyingi darsgacha aniq qadamlaringiz nimalar?"
+    },
+    {
+     "k": "ar",
+     "t": "table",
+     "l": "Amaliy rejam — bu hafta",
+     "cols": [
+      "Bajarish muddati"
+     ],
+     "rows": [
+      "Hozirgi mijozdan stories’da tavsiya so‘rash",
+      "10 ta do‘stga murojaat qilish",
+      "HeadHunter profilini to‘ldirish va 5 ta vakansiyaga javob berish",
+      "Telegram guruhlarga a’zo bo‘lish",
+      "Research: nichengizdan 10 ta biznes topish",
+      "9 ta target kreativ ssenariysini yozish",
+      "Sotuvchi SMS yozish va yuborish",
+      "Shaxsiy brend uchun birinchi post qo‘yish",
+      "10 ta peregovor o‘tkazish"
+     ]
+    },
+    {
+     "k": "ins",
+     "t": "table",
+     "l": "Darsdan olingan eng muhim 3 ta insayt",
+     "cols": [
+      "Insayt"
+     ],
+     "rows": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   ]
+  }
+ ]
+}

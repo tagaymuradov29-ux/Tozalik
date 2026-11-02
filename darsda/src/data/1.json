@@ -1,0 +1,409 @@
+{
+ "n": 1,
+ "title": "1-dars · To'g'ri maqsad qo'yish va natija",
+ "goal": "Ushbu dars orqali siz to'g'ri maqsad qo'yish, blog yuritish, marketing yo'nalishlari, niche tanlash va agentlik xatolaridan qochishni o'rganib, amalda qo'llashni o'rganasiz.",
+ "sections": [
+  {
+   "t": "Tanishuv",
+   "quote": "«Orolni olmoqchi bo'lsang, kemalarni yoqib yubor.» — Taleb Nassim",
+   "theory": [],
+   "intro": "Mashq — o'zingizni tanishtiring:",
+   "f": [
+    {
+     "k": "t1",
+     "t": "text",
+     "l": "Ismingiz"
+    },
+    {
+     "k": "t2",
+     "t": "area",
+     "l": "Hayotingizdagi eng katta xatoyingiz"
+    },
+    {
+     "k": "t3",
+     "t": "area",
+     "l": "Nima ish bilan shug'ullanasiz?"
+    },
+    {
+     "k": "t4",
+     "t": "area",
+     "l": "Nimada kuchlisiz va boshqalarga qanday yordam bera olasiz?"
+    },
+    {
+     "k": "t5",
+     "t": "text",
+     "l": "Bitta so'z bilan siz kimsiz?"
+    }
+   ]
+  },
+  {
+   "t": "Kurs haqida",
+   "quote": "«Bu kursning eng asosiy maqsadi — nafaqat sizni o'stirish, balki birgalikda o'sish.»",
+   "theory": [
+    "<b>Kursdan keyin qanaqa natijalarga erishasiz:</b><ul><li>Qimmat chekga sotish</li><li>Loyihada natija qilish</li><li>Jamoani boshqarish</li><li>Marketingni tizimli boshqarish</li><li>Ko'plab loyihalar bilan ishlaydigan agentlik biznesini qilish</li><li>Uzoq muddatli LTV bilan ishlash</li></ul>",
+    "<b>Kurs challenjlari:</b><ol><li>Shaxsiy blog boshlash — gamifikatsiya ballari bilan</li><li>Ko'proq «peregovor» o'tkazib, ko'p mijozlar bilan ishlash</li></ol>"
+   ],
+   "f": [
+    {
+     "k": "k1",
+     "t": "area",
+     "l": "Bu kursdan qanday konkret natija olishni xohlaysiz?"
+    },
+    {
+     "k": "k2",
+     "t": "area",
+     "l": "Kurs davomida o'zingizga qanday majburiyat qo'yasiz?"
+    },
+    {
+     "k": "k3",
+     "t": "area",
+     "l": "2 ta challengega tayyormisiz? Birinchi qadamingiz nima?"
+    }
+   ]
+  },
+  {
+   "t": "Maqsad qo'yish",
+   "quote": "«Maqsadi yo'qlar maqsadi borlar uchun xizmat qiladi.» — Abdulloh ibn Muborak",
+   "theory": [
+    "<table><tr><th>Tur</th><th>Ta'rifi</th></tr><tr><td>Dono</td><td>O'zgalar xatosidan xulosa oladi</td></tr><tr><td>Aqlli</td><td>O'zining xatosidan oladi</td></tr><tr><td>Ahmoq</td><td>«Bilaman» degan pozitsiyada bo'ladi va ikkalasiga ham ishonmaydi</td></tr></table>",
+    "<b>Vaziyat yaratish va vaziyatdan qochish</b><table><tr><th>Vaziyatdan qochish (bahonachilik)</th><th>Vaziyat yaratish (yechim topish)</th></tr><tr><td>«Akbar aka kattaroq caselarda ishlaganlar»</td><td>«Loyihamga moslashtirish uchun maslahat olaman»</td></tr><tr><td>«Bozorda to'g'ri razmerlik shim topa olmadim»</td><td>«O'zimga yoqqan shimni olib to'g'irlatib olish»</td></tr></table>",
+    "<b>«A bo'lmasa nima bo'ladi?» zanjiri</b><table><tr><th>Qadam</th><th>Oqibat</th></tr><tr><td>A</td><td>Kech kelsam darsni yaxshi tushunmiman</td></tr><tr><td>B</td><td>Darsni yaxshi tushunmasam, loyihamda ishlata olmayman</td></tr><tr><td>C</td><td>Loyihamda ishlatmasam, loyiha mendan chiqib ketadi</td></tr><tr><td>D</td><td>Loyiha chiqib ketsa, daromadim tushib ketadi</td></tr><tr><td>E</td><td>Daromadim tushib ketsa, BMW ololmayman</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "z",
+     "t": "table",
+     "l": "Mashq — o'z zanjiringizni tuzing",
+     "cols": [
+      "Sizning oqibatingiz"
+     ],
+     "rows": [
+      "A — agar hozir harakat qilmasam",
+      "B",
+      "C",
+      "D",
+      "E — yakuniy oqibat"
+     ]
+    }
+   ]
+  },
+  {
+   "t": "3M metodi va HAVE / DO / BE",
+   "quote": "",
+   "theory": [
+    "<table><tr><th>Harf</th><th>Ma'nosi</th><th>Tushuntirish</th></tr><tr><td>Ma'naviy</td><td>Ruhiy va qadriyatlar asosi</td><td>Nima uchun? — ichki sabab</td></tr><tr><td>Moddiy</td><td>Moliyaviy va moddiy maqsadlar</td><td>Nima olaman? — aniq raqamlar</td></tr><tr><td>Mahfiy</td><td>Yashirin motivatsiya va ichki sabab</td><td>Boshqalarga aytilmaydigan asosiy sabab</td></tr></table>",
+    "<table><tr><th>Model</th><th>Savol</th></tr><tr><td>HAVE — Ega bo'lmoq</td><td>Nimalarga ega bo'lmoqchisiz?</td></tr><tr><td>DO — Qilmoq</td><td>Buning uchun nima qilasiz?</td></tr><tr><td>BE — Bo'lmoq</td><td>Oxirida kim bo'lasiz?</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "m1",
+     "t": "area",
+     "l": "3M · Ma'naviy (Nima uchun?)"
+    },
+    {
+     "k": "m2",
+     "t": "area",
+     "l": "3M · Moddiy (Nima olaman?)"
+    },
+    {
+     "k": "m3",
+     "t": "area",
+     "l": "3M · Mahfiy (Haqiqiy sabab)"
+    },
+    {
+     "k": "h1",
+     "t": "area",
+     "l": "HAVE — Nimalarga ega bo'lmoqchisiz?"
+    },
+    {
+     "k": "h2",
+     "t": "area",
+     "l": "DO — Buning uchun nima qilasiz?"
+    },
+    {
+     "k": "h3",
+     "t": "area",
+     "l": "BE — Oxirida kim bo'lasiz?"
+    }
+   ]
+  },
+  {
+   "t": "SMART maqsad",
+   "quote": "",
+   "theory": [
+    "<table><tr><th>Harf</th><th>Ma'nosi</th><th>O'zbek</th></tr><tr><td>S</td><td>Specific</td><td>Aniq</td></tr><tr><td>M</td><td>Measurable</td><td>O'lchash mumkin bo'lgan</td></tr><tr><td>A</td><td>Attainable</td><td>Erishsa bo'ladigan</td></tr><tr><td>R</td><td>Relevant</td><td>Sohaga oid</td></tr><tr><td>T</td><td>Time-Bound</td><td>Deadline ega</td></tr></table>",
+    "<table><tr><th>Noto'g'ri maqsad</th><th>To'g'ri (SMART) maqsad</th></tr><tr><td>«O'zbekistondagi eng agentlik rahbari bo'laman»</td><td>«1 oy ichida o'rtacha chekimni $2000 ga chiqaraman»</td></tr><tr><td>Aniq emas, o'lchab bo'lmaydi</td><td>Aniq, o'lchanadi, muddati bor</td></tr></table>"
+   ],
+   "intro": "A nuqta — hozirgi holat:",
+   "f": [
+    {
+     "k": "a1",
+     "t": "text",
+     "l": "Lavozim"
+    },
+    {
+     "k": "a2",
+     "t": "text",
+     "l": "Loyihalar soni"
+    },
+    {
+     "k": "a3",
+     "t": "text",
+     "l": "Oylik daromad"
+    },
+    {
+     "k": "s1",
+     "t": "area",
+     "l": "B nuqta · S — Aniq"
+    },
+    {
+     "k": "s2",
+     "t": "text",
+     "l": "M — O'lchov (raqam)"
+    },
+    {
+     "k": "s3",
+     "t": "area",
+     "l": "A — Erishish mumkinligi"
+    },
+    {
+     "k": "s4",
+     "t": "area",
+     "l": "R — Sohaga aloqasi"
+    },
+    {
+     "k": "s5",
+     "t": "text",
+     "l": "T — Deadline"
+    }
+   ]
+  },
+  {
+   "t": "Blog yuritish",
+   "quote": "«Muvaffaqiyat bitta zerikarli ishni qayta-qayta qilish ortidan keladi.» — Alex Hormozi",
+   "theory": [
+    "<table><tr><th>Sabab</th><th>Tushuntirish</th></tr><tr><td>Qimmatga sotish</td><td>Ekspert sifatida ko'ringanda narxni oshirish mumkin</td></tr><tr><td>Doimiy loyihalarga ega bo'lish</td><td>Mijozlar o'zi keladi</td></tr><tr><td>Jamoa yig'ish</td><td>Kuchli mutaxassislar siz bilan ishlashni xohlaydi</td></tr><tr><td>Networking</td><td>Foydali aloqalar o'rnatiladi</td></tr><tr><td>Qo'shimcha imkoniyatlar</td><td>Takliflar, hamkorliklar, investitsiyalar</td></tr></table>",
+    "<b>Natijaga olib kelgan 4 ta instrument:</b><ol><li>Xato bo'lsa ham boshlash — mukammal kutmaslik</li><li>Doimiylik — muntazam post qo'yish</li><li>Content rubrikalar — tizimli kontent rejasi</li><li>Auditoriya bilan birga o'sish — ular bilan dialog qurish</li></ol>",
+    "<b>Stories uchun 7 ta rubrika</b><table><tr><th>Rubrika</th><th>Maqsadi</th></tr><tr><td>Natija</td><td>Loyihalardagi natijalar</td></tr><tr><td>Yutuqlar</td><td>Hayotingizda erishayotgan narsalaringiz</td></tr><tr><td>Ish jarayoni</td><td>Kuningiz davomida nimalar qilayotganingiz</td></tr><tr><td>Bilim</td><td>O'qiyotganingiz va yangi bilimlar</td></tr><tr><td>Savol-javob</td><td>Ekspertlik va shaxsiyatni ko'rsatish</td></tr><tr><td>Shaxsiy fikr</td><td>Shaxsiyatni ochish</td></tr><tr><td>Shaxsiy hayot</td><td>Siz kim ekanligingiz haqida</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "b1",
+     "t": "text",
+     "l": "Blogingizning asosiy mavzusi nima bo'ladi?"
+    },
+    {
+     "k": "b2",
+     "t": "text",
+     "l": "Haftada necha marta post qo'yishingiz mumkin?"
+    },
+    {
+     "k": "b3",
+     "t": "text",
+     "l": "Qaysi rubrikadan boshlaysiz?"
+    },
+    {
+     "k": "b4",
+     "t": "text",
+     "l": "Birinchi Reels qachon chiqadi?"
+    },
+    {
+     "k": "br",
+     "t": "table",
+     "l": "Content rubrikalaringiz",
+     "cols": [
+      "Rubrika nomi",
+      "Mavzu / kontent turi",
+      "Chastota"
+     ],
+     "dyn": 3
+    },
+    {
+     "k": "bx1",
+     "t": "area",
+     "l": "Blog yuritishdan qaysi natijani birinchi kutasiz?"
+    },
+    {
+     "k": "bx2",
+     "t": "area",
+     "l": "Hozir blogingizni boshlashga nima to'sqinlik qilyapti?"
+    },
+    {
+     "k": "bx3",
+     "t": "area",
+     "l": "Bu to'siqni qanday bartaraf etasiz?"
+    }
+   ]
+  },
+  {
+   "t": "Marketing yo'nalishlari",
+   "quote": "«Marketing — mahsulot ishlab chiqishdan qayta sotuvgacha bo'lgan jarayon.»",
+   "theory": [
+    "<table><tr><th>Yo'nalish</th><th>Ta'rifi</th><th>Maqsadi</th></tr><tr><td>Strategik</td><td>Marketing instrumentlari orqali maqsadga yetishish harakatlar ketma-ketligi</td><td>Yo'nalish va reja berish</td></tr><tr><td>Brand</td><td>Insonlar ongidagi mahsulot yoki servis haqidagi tasavvurni kuchaytirish</td><td>Obraz va ishonch qurish</td></tr><tr><td>Performance</td><td>Samaradorlik, effektivlik, sifat va daromadni oshirish</td><td>O'lchanadigan natija</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "mk",
+     "t": "table",
+     "l": "O'z agentligingiz uchun aniqlang",
+     "cols": [
+      "Siz qanday ishlaysiz?",
+      "Kuchli tomoningiz"
+     ],
+     "rows": [
+      "Strategik marketing",
+      "Brand marketing",
+      "Performance marketing"
+     ]
+    },
+    {
+     "k": "mq1",
+     "t": "area",
+     "l": "Agentligingiz qaysi yo'nalishda eng kuchli?"
+    },
+    {
+     "k": "mq2",
+     "t": "area",
+     "l": "Qaysi yo'nalish bo'yicha o'sish kerak?"
+    }
+   ]
+  },
+  {
+   "t": "Niche tanlash",
+   "quote": "«Noto'g'ri nishada ishlash — yaxshi instrumentlar ham ishlamaydi.»",
+   "theory": [
+    "<b>1. Nishalashmagan</b> — ko'plab marketing productlarni turli bizneslarga sotish<table><tr><th>Kuchli</th><th>Zaif</th></tr><tr><td>Sotuv konversiyasi yuqori</td><td>Bitta productda leader bo'lish ehtimoli past</td></tr><tr><td>Cross-sale va upsale imkoni</td><td>O'rtacha chek past</td></tr><tr><td>Mashtablashish ehtimoli yuqori</td><td>Reputatsiya yo'qotish xavfi</td></tr><tr><td>Biznes egasi pozitsiyasida ishlash</td><td>Tizimlashtirish qiyin</td></tr></table>",
+    "<b>2. Xizmat turiga ko'ra</b> — bitta productni ko'plab sohalarga sotish<table><tr><th>Kuchli</th><th>Zaif</th></tr><tr><td>Bitta produktda bozor lideriga aylanish</td><td>Super mashtablashish qiyin</td></tr><tr><td>Jarayonlarni tizimlashtirish</td><td>Monotonlik va kreativ cheklov</td></tr><tr><td>Katta chekga sotish</td><td></td></tr><tr><td>Kam jamoa bilan yuqori aylanma</td><td></td></tr></table>",
+    "<b>3. Sohaga ko'ra</b> — turli productlarni bitta sohaga sotish<table><tr><th>Kuchli</th><th>Zaif</th></tr><tr><td>Sohada ekspertlik kuchayadi</td><td>Loyiha topish qiyin</td></tr><tr><td>Adaptatsiya uchun vaqt kerak emas</td><td>Cheklangan bozor</td></tr><tr><td>Referal tizim yaxshi ishlaydi</td><td>Zerikish va monotonlik</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "nb",
+     "t": "table",
+     "l": "Niche tanlash (3 bosqich)",
+     "cols": [
+      "1. Bilaman",
+      "2. Trendda",
+      "3. Qila olaman"
+     ],
+     "dyn": 3
+    },
+    {
+     "k": "n1",
+     "t": "area",
+     "l": "Tanlangan niche"
+    },
+    {
+     "k": "n2",
+     "t": "area",
+     "l": "Nega shu niche?"
+    },
+    {
+     "k": "n3",
+     "t": "area",
+     "l": "Bu niche qaysi muammoni hal qiladi?"
+    },
+    {
+     "k": "n4",
+     "t": "area",
+     "l": "Bitta sohaga bog'liq bo'lish xavfiga qanday tayyorsiz?"
+    }
+   ]
+  },
+  {
+   "t": "Agentliklarning asosiy xatolari",
+   "quote": "«Siz bitta katta xato tufayli bankrot bo'lmaysiz, tuzatilmagan kichik xatolar sizni qulatadi.» — Alex Hormozi",
+   "theory": [
+    "<table><tr><th>#</th><th>Xato</th><th>Mohiyati</th></tr><tr><td>1</td><td>Qora oq qushlarga tayyor turmaslik</td><td>«Loyiha doim qoladi», «Xodim ketmaydi» deb o'ylash</td></tr><tr><td>2</td><td>Qomusiylik yetishmasligi</td><td>Faqat marketingni bilish</td></tr><tr><td>3</td><td>Skin in the Game yo'qligi</td><td>O'zini va xodimni biznesga shaxsan bog'lamaslik</td></tr><tr><td>4</td><td>Businessman pozitsiyasida bo'lmaslik</td><td>Hammani o'zi qilish, uzoq muddat o'ylamaslik</td></tr><tr><td>5</td><td>Muammolarni baham ko'rmaslik</td><td>Jamoaga aytmaslik, vision bera olmaslik</td></tr><tr><td>6</td><td>Marginal / Opportunity Cost hisoblamaslik</td><td>Noto'g'ri investitsiya, xarajat hisoblamaslik</td></tr><tr><td>7</td><td>Limiting Factor</td><td>Eng kuchsiz nuqtani topmaslik</td></tr><tr><td>8</td><td>Halden's Rule of Right Size</td><td>Hajmiga mos bo'lmaslik</td></tr></table>"
+   ],
+   "f": [
+    {
+     "k": "x",
+     "t": "table",
+     "l": "O'z agentligingizni tekshiring",
+     "cols": [
+      "Sizda bormi? (Ha/Yo'q)",
+      "Yechim rejasi"
+     ],
+     "yn": 0,
+     "rows": [
+      "Qora oq qushlarga tayyor turmaslik",
+      "Qomusiylik yetishmasligi",
+      "Skin in the Game yo'qligi",
+      "Businessman pozitsiyasida bo'lmaslik",
+      "Muammolarni baham ko'rmaslik",
+      "Marginal / Opportunity Cost",
+      "Limiting Factor",
+      "Halden's Rule of Right Size"
+     ]
+    },
+    {
+     "k": "lf1",
+     "t": "area",
+     "l": "Limiting Factor: hozir agentligingizning eng kuchsiz nuqtasi qaysi?"
+    },
+    {
+     "k": "lf2",
+     "t": "area",
+     "l": "Bu nuqtani yaxshilash uchun birinchi qadam nima?"
+    },
+    {
+     "k": "lf3",
+     "t": "area",
+     "l": "Qaysi mutaxassis yordam bera oladi?"
+    }
+   ]
+  },
+  {
+   "t": "Yakuniy xulosa va harakat rejasi",
+   "quote": "«Noodatiy natijalarga, odatiy yo'llar bilan yetib bo'lmaydi.» — Ivan Danilov",
+   "theory": [],
+   "f": [
+    {
+     "k": "y1",
+     "t": "area",
+     "l": "Dars sizga maqsad qo'yish haqida eng muhim qanday fikr berdi?"
+    },
+    {
+     "k": "y2",
+     "t": "area",
+     "l": "O'zingiz uchun qaysi yangi mezonni qo'shdingiz?"
+    },
+    {
+     "k": "y3",
+     "t": "area",
+     "l": "Kelgusi darsgacha aniq qadamlaringiz nimalar?"
+    },
+    {
+     "k": "ar",
+     "t": "table",
+     "l": "Amaliy rejam",
+     "cols": [
+      "Bajarish muddati"
+     ],
+     "rows": [
+      "SMART maqsad yozish",
+      "Content plan tuzish (50 ball)",
+      "Blog rubrikalarini aniqlash",
+      "Birinchi post yoki Reels chiqarish",
+      "Niche aniqlab, ustunlik va zaifliklarni yozish",
+      "Agentlik xatolarini tahlil qilish"
+     ]
+    },
+    {
+     "k": "ins",
+     "t": "table",
+     "l": "Darsdan olingan eng muhim 3 ta insayt",
+     "cols": [
+      "Insayt"
+     ],
+     "rows": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   ]
+  }
+ ]
+}

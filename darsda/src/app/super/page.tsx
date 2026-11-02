@@ -1,0 +1,54 @@
+import { requireUser } from "@/lib/auth";
+import { sql } from "@/lib/db";
+import { createPlatform } from "@/app/actions/super";
+import { logout } from "@/app/actions/auth";
+import { ActionForm, Submit } from "@/components/Form";
+
+export default async function SuperPage() {
+  await requireUser(["super"]);
+  const rows = await sql<{ id: number; name: string; slug: string; color: string; students: number; staff: number; courses: number; admins: string | null }[]>`
+    select p.id, p.name, p.slug, p.color,
+      (select count(*)::int from users u where u.platform_id = p.id and u.role = 'student') as students,
+      (select count(*)::int from users u where u.platform_id = p.id and u.role in ('admin','curator')) as staff,
+      (select count(*)::int from courses c where c.platform_id = p.id) as courses,
+      (select string_agg(u.name || ' · +' || u.phone, ', ') from users u where u.platform_id = p.id and u.role = 'admin') as admins
+    from platforms p order by p.id desc`;
+  return (
+    <main className="page plain">
+      <div className="row between">
+        <h1 className="h1">Platformalar</h1>
+        <form action={logout}><button className="btn sm ghost">Chiqish</button></form>
+      </div>
+      <p className="sub" style={{ marginTop: -8 }}>Har bir mijoz (o&apos;quv markazi, ekspert) — alohida platforma: o&apos;z kurslari, o&apos;quvchilari va adminlari.</p>
+
+      {rows.map((p) => (
+        <div className="card tight" key={p.id}>
+          <div className="row">
+            <span className="avatar" style={{ background: p.color, color: "#fff" }}>{p.name.slice(0, 1)}</span>
+            <div className="grow">
+              <div className="h3">{p.name}</div>
+              <div className="tiny muted">/{p.slug} · {p.courses} kurs · {p.students} o&apos;quvchi · {p.staff} xodim</div>
+            </div>
+          </div>
+          {p.admins && <div className="tiny sub">Admin: {p.admins}</div>}
+        </div>
+      ))}
+      {!rows.length && <div className="card empty">Hali platforma yo&apos;q. Birinchisini quyida yarating.</div>}
+
+      <div className="card">
+        <h2 className="h2">Yangi platforma</h2>
+        <ActionForm action={createPlatform} reset>
+          <label className="field"><span>Nomi</span><input className="input" name="name" placeholder="Real Marketing" required /></label>
+          <label className="field"><span>Qisqa nom (lotin, havolada)</span><input className="input" name="slug" placeholder="realmarketing" required /></label>
+          <label className="field"><span>Brend rangi</span><input className="input" name="color" type="color" defaultValue="#0B5D46" style={{ height: 50, padding: 4 }} /></label>
+          <div className="h3" style={{ marginTop: 6 }}>Platforma admini</div>
+          <label className="field"><span>Ism familiya</span><input className="input" name="admin_name" required /></label>
+          <label className="field"><span>Telefon</span><input className="input" name="admin_phone" type="tel" inputMode="tel" required /></label>
+          <label className="field"><span>Parol</span><input className="input" name="admin_password" type="text" minLength={6} required /></label>
+          <label className="row small"><input type="checkbox" name="demo" defaultChecked /> Namuna kurs bilan (RM 6.0 tuzilmasi: darslar, workbook, amaliy, stories, reels)</label>
+          <Submit>Yaratish</Submit>
+        </ActionForm>
+      </div>
+    </main>
+  );
+}
