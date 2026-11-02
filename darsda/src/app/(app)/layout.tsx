@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { getSigned, requireUser } from "@/lib/auth";
+import { backToSuper } from "@/app/actions/auth";
 import { sql } from "@/lib/db";
 import { Nav } from "@/components/Nav";
 import { SW } from "@/components/SW";
@@ -14,8 +15,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         where c.platform_id = ${u.platform_id} and s.status = 'pending'
           and (${u.role === "admin"} or (${u.role === "curator"} and g.curator_id = ${u.id}))) as review,
       (select count(*)::int from notifications where user_id = ${u.id} and read_at is null) as unread`;
+  const back = await getSigned<{ uid: number }>("back");
   return (
     <div style={{ ["--brand" as string]: u.color }}>
+      {back && (
+        <form action={backToSuper} className="superbar">
+          <span>👑 {u.platform_name} · admin sifatida</span>
+          <button>Super panelga qaytish</button>
+        </form>
+      )}
       {children}
       <Nav role={u.role} review={review} unread={unread} />
       <SW />

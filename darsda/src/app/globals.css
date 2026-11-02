@@ -197,3 +197,9 @@ details > summary::-webkit-details-marker { display: none; }
 .heat i.part { background: #f2c94c; }
 .heat i.bad { background: #eb8a8a; }
 .scrollx { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+.superbar {
+  position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 14px 8px; background: #1c2533; color: #fff; font-size: 13px;
+}
+.superbar button { border: 0; border-radius: 10px; padding: 6px 10px; background: #fff; color: #1c2533; font-weight: 600; font-size: 12.5px; }
+.superbar + .page { padding-top: 14px; }

@@ -2,7 +2,7 @@
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
-import { endSession, normPhone, startSession } from "@/lib/auth";
+import { clearSigned, endSession, getSigned, normPhone, setSigned, startSession } from "@/lib/auth";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -16,12 +16,38 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
     where phone = ${phone} and active and (${pid} = 0 or platform_id = ${pid})`;
   const ok = rows.filter((r) => bcrypt.compareSync(pass, r.password_hash));
   if (!ok.length) return { error: "Telefon yoki parol noto'g'ri" };
+  if (ok.length > 1) {
+    // Bir raqam bir nechta platformada — qaysi biriga kirishni tanlaydi
+    await setSigned("pick", { ids: ok.map((r) => r.id) }, 600);
+    redirect("/login/tanlash");
+  }
   await startSession(ok[0].id);
   redirect(ok[0].platform_id ? "/" : "/super");
 }
 
+export async function pickAccount(fd: FormData) {
+  const p = await getSigned<{ ids: number[] }>("pick");
+  const id = Number(fd.get("id"));
+  if (!p?.ids?.includes(id)) redirect("/login");
+  const [u] = await sql<{ platform_id: number | null }[]>`select platform_id from users where id = ${id} and active`;
+  if (!u) redirect("/login");
+  await clearSigned("pick");
+  await startSession(id);
+  redirect(u.platform_id ? "/" : "/super");
+}
+
+export async function backToSuper() {
+  const b = await getSigned<{ uid: number }>("back");
+  await clearSigned("back");
+  const [u] = b ? await sql`select 1 from users where id = ${b.uid} and role = 'super' and active` : [];
+  if (!u || !b) redirect("/login");
+  await startSession(b.uid);
+  redirect("/super");
+}
+
 export async function logout() {
   await endSession();
+  await clearSigned("back");
   redirect("/login");
 }
 

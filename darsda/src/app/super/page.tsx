@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { createPlatform } from "@/app/actions/super";
+import { createPlatform, enterPlatform } from "@/app/actions/super";
 import { changePassword, logout } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/Form";
 
@@ -31,6 +31,10 @@ export default async function SuperPage() {
             </div>
           </div>
           {p.admins && <div className="tiny sub">Admin: {p.admins}</div>}
+          <form action={enterPlatform}>
+            <input type="hidden" name="id" value={p.id} />
+            <button className="btn sm soft full">Kirish →</button>
+          </form>
         </div>
       ))}
       {!rows.length && <div className="card empty">Hali platforma yo&apos;q. Birinchisini quyida yarating.</div>}

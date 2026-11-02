@@ -2,7 +2,8 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
-import { normPhone, requireUser } from "@/lib/auth";
+import { normPhone, requireUser, setSigned, startSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { seedDemoCourse } from "@/lib/demo";
 import type { FormState } from "./auth";
 
@@ -32,4 +33,16 @@ export async function togglePlatformUser(fd: FormData) {
   const id = Number(fd.get("id"));
   await sql`update users set active = not active where id = ${id} and role = 'admin'`;
   revalidatePath("/super");
+}
+
+/** Super admin platformaga uning admini sifatida kiradi; tepada «Super panelga qaytish» chiqadi */
+export async function enterPlatform(fd: FormData) {
+  const me = await requireUser(["super"]);
+  const pid = Number(fd.get("id"));
+  const [a] = await sql<{ id: number }[]>`
+    select id from users where platform_id = ${pid} and role = 'admin' and active order by id limit 1`;
+  if (!a) return;
+  await setSigned("back", { uid: me.id }, 60 * 60 * 24 * 7);
+  await startSession(a.id);
+  redirect("/");
 }

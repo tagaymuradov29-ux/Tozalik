@@ -74,3 +74,21 @@ export function normPhone(p: string) {
   const d = p.replace(/\D/g, "");
   return d.length === 9 ? "998" + d : d;
 }
+
+/** Qisqa muddatli imzolangan cookie (akkaunt tanlash, super admin qaytishi uchun) */
+export async function setSigned(name: string, payload: Record<string, unknown>, maxAge: number) {
+  const token = await new SignJWT(payload).setProtectedHeader({ alg: "HS256" }).setIssuedAt().setExpirationTime(`${maxAge}s`).sign(key());
+  (await cookies()).set(name, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge });
+}
+export async function getSigned<T>(name: string): Promise<T | null> {
+  const t = (await cookies()).get(name)?.value;
+  if (!t) return null;
+  try {
+    return (await jwtVerify(t, key())).payload as T;
+  } catch {
+    return null;
+  }
+}
+export async function clearSigned(name: string) {
+  (await cookies()).delete(name);
+}
