@@ -47,7 +47,7 @@ export function ThemePicker() {
     <div className="themeseg">
       {opts.map(([m, ic, t]) => (
         <button key={m} type="button" className={mode === m ? "on" : ""} onClick={() => { apply(m); setMode(m); }}>
-          <span style={{ fontSize: 20 }}>{ic}</span>{t}
+          <span style={{ fontSize: 17 }}>{ic}</span>{t}
         </button>
       ))}
     </div>

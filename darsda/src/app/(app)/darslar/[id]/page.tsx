@@ -47,7 +47,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     <main className="page">
       <Head title={`${l.n}-dars`} back="/darslar" />
       <div className="stack" style={{ gap: 4 }}>
-        <h1 className="h2" style={{ fontSize: 24 }}>{l.title}</h1>
+        <h1 className="h2" style={{ fontSize: 19 }}>{l.title}</h1>
         <div className="sub">{fmtDay(l.starts_at, u.tz)}, {fmtTime(l.starts_at, u.tz)}{l.speaker ? ` · ${l.speaker}` : ""}</div>
       </div>
 

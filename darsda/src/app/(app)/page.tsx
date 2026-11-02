@@ -17,7 +17,7 @@ function Bell() {
   return (
     <div className="row" style={{ gap: 8 }}>
       <ThemeToggle />
-      <Link href="/bildirishnomalar" className="back" aria-label="Bildirishnomalar"><IBell size={20} /></Link>
+      <Link href="/bildirishnomalar" className="back" aria-label="Bildirishnomalar"><IBell size={18} /></Link>
     </div>
   );
 }
@@ -264,12 +264,12 @@ async function Extras({ u, courseId }: { u: User; courseId: number }) {
   return (
     <div className="grid2">
       <Link href="/networking" className="card tight">
-        <span style={{ fontSize: 22 }}>🤝</span>
+        <span style={{ fontSize: 18 }}>🤝</span>
         <span className="h3">Networking</span>
         <span className="tiny muted">{u.role === "student" ? (net?.total ? `${net.ok}/${net.total} tanishuv` : "Tez orada") : "Juftliklar va isbotlar"}</span>
       </Link>
       <Link href={ws ? `/workshop/${ws.id}` : "/workshop"} className="card tight">
-        <span style={{ fontSize: 22 }}>🏆</span>
+        <span style={{ fontSize: 18 }}>🏆</span>
         <span className="h3">Workshop</span>
         <span className="tiny muted" style={ws && ws.phase !== "done" ? { color: "var(--brand)", fontWeight: 600 } : undefined}>{wsTxt}</span>
       </Link>

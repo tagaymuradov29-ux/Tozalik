@@ -9,7 +9,7 @@ export function Head({ title, back, right, sub }: { title: string; back?: string
     <div className="stack" style={{ gap: 4 }}>
       {back ? (
         <div className="topbar">
-          <Link href={back} className="back" aria-label="Orqaga"><IBack size={20} /></Link>
+          <Link href={back} className="back" aria-label="Orqaga"><IBack size={18} /></Link>
           <div className="grow h2 trunc">{title}</div>
           {right}
         </div>

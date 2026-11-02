@@ -41,7 +41,7 @@ async function StudentAtt({ u, course, code }: { u: User; course: Course; code?:
             <ActionForm action={checkIn}>
               <label className="field">
                 <span>Ekrandagi 6 xonali kod</span>
-                <input className="input code6" style={{ fontSize: 34, padding: "10px 0" }} name="code" inputMode="numeric" pattern="[0-9 ]*" maxLength={7} defaultValue={code} autoFocus required />
+                <input className="input code6" style={{ fontSize: 30, padding: "8px 0" }} name="code" inputMode="numeric" pattern="[0-9 ]*" maxLength={7} defaultValue={code} autoFocus required />
               </label>
               {lateNow && <input className="input" name="reason" placeholder="Kechikish sababi" />}
               <Submit>Belgilash</Submit>

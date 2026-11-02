@@ -12,7 +12,7 @@ export function Nav({ role, review, unread }: { role: string; review: number; un
       ? [
           { href: "/", label: "Bugun", icon: <IHome />, badge: unread },
           { href: "/darslar", label: "Darslar", icon: <IBook /> },
-          { href: "/yuborish", label: "", icon: <IPlus size={28} />, fab: true },
+          { href: "/yuborish", label: "", icon: <IPlus size={24} />, fab: true },
           { href: "/chat", label: "Chat", icon: <IChat /> },
           { href: "/natijalar", label: "Natijalar", icon: <IChart /> },
         ]
@@ -20,14 +20,14 @@ export function Nav({ role, review, unread }: { role: string; review: number; un
         ? [
             { href: "/", label: "Bugun", icon: <IHome />, badge: unread },
             { href: "/tekshirish", label: "Tekshirish", icon: <IReview />, badge: review },
-            { href: "/davomat", label: "", icon: <IQr size={28} />, fab: true },
+            { href: "/davomat", label: "", icon: <IQr size={23} />, fab: true },
             { href: "/chat", label: "Chat", icon: <IChat /> },
             { href: "/guruh", label: "Guruh", icon: <IUsers /> },
           ]
         : [
             { href: "/", label: "Bugun", icon: <IHome />, badge: unread },
             { href: "/darslar", label: "Darslar", icon: <IBook /> },
-            { href: "/davomat", label: "", icon: <IQr size={28} />, fab: true },
+            { href: "/davomat", label: "", icon: <IQr size={23} />, fab: true },
             { href: "/tekshirish", label: "Tekshirish", icon: <IReview />, badge: review },
             { href: "/guruh", label: "Odamlar", icon: <IUsers /> },
           ];
