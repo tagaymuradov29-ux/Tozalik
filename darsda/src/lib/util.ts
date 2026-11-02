@@ -64,7 +64,8 @@ export function left(d: Date | string) {
 }
 
 export function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("");
+  // Qavs va belgilar hisobga olinmaydi: «Shahzod (o'quvchi)» → «S», «Malika Karimova» → «MK»
+  return name.replace(/\(.*?\)/g, "").split(/\s+/).map((s) => s.replace(/[^\p{L}\p{N}]/gu, "")).filter(Boolean).slice(0, 2).map((s) => s[0]!.toUpperCase()).join("") || "?";
 }
 
 export function plural(n: number, w: string) {

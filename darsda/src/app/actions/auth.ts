@@ -45,10 +45,11 @@ export async function backToSuper() {
   redirect("/super");
 }
 
-export async function logout() {
+export async function logout(fd?: FormData) {
+  const phone = String(fd?.get("phone") || "").replace(/\D/g, "");
   await endSession();
   await clearSigned("back");
-  redirect("/login");
+  redirect(phone ? `/login?phone=${phone}` : "/login");
 }
 
 export async function join(_: FormState, fd: FormData): Promise<FormState> {

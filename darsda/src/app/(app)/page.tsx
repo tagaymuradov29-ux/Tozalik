@@ -17,11 +17,12 @@ export default async function Home() {
   return u.role === "student" ? <StudentHome u={u} /> : <StaffHome u={u} />;
 }
 
-function Bell() {
+function Bell({ name }: { name: string }) {
   return (
     <div className="row" style={{ gap: 8 }}>
       <ThemeToggle />
       <Link href="/bildirishnomalar" className="back" aria-label="Bildirishnomalar"><IBell size={18} /></Link>
+      <Link href="/profil" aria-label="Profil va chiqish" className="me-btn"><Avatar name={name} size={34} /></Link>
     </div>
   );
 }
@@ -29,7 +30,7 @@ function Bell() {
 function NoCourse({ u }: { u: User }) {
   return (
     <main className="page">
-      <Head title="Bugun" right={<Bell />} />
+      <Head title="Bugun" right={<Bell name={u.name} />} />
       <div className="card empty">
         {u.role === "student" ? "Siz hali guruhga biriktirilmagansiz. Kurator yoki admin tez orada qo'shadi." : "Hali kurs yo'q."}
       </div>
@@ -56,7 +57,7 @@ async function StudentHome({ u }: { u: User }) {
 
   return (
     <main className="page">
-      <Head title={`Salom, ${first}`} right={<Bell />} sub={course.title} />
+      <Head title={`Salom, ${first}`} right={<Bell name={u.name} />} sub={course.title} />
 
       <div className="card tight">
         <div className="row between">
@@ -171,7 +172,7 @@ async function StaffHome({ u }: { u: User }) {
 
   return (
     <main className="page">
-      <Head title="Bugun" right={<Bell />} sub={`${course.title} · ${u.role === "admin" ? "Administrator" : "Kurator"}`} />
+      <Head title="Bugun" right={<Bell name={u.name} />} sub={`${course.title} · ${u.role === "admin" ? "Administrator" : "Kurator"}`} />
 
       <div className="grid2">
         <Link href="/tekshirish" className="card tight">

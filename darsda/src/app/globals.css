@@ -302,3 +302,4 @@ details > summary::-webkit-details-marker { display: none; }
 .sky-tip { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(255,255,255,.96); color: #1A2330;
   border-radius: 12px; padding: 7px 11px; font-size: 12px; min-width: 200px; max-width: 92%; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
 button.pill { cursor: pointer; font: inherit; }
+.me-btn { display: inline-flex; border-radius: 50%; box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--line); }

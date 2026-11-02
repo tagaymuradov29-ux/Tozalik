@@ -21,7 +21,7 @@ export default async function SuperPage({ searchParams }: { searchParams: Promis
         <h1 className="h1">Platformalar</h1>
         <div className="row" style={{ gap: 8 }}>
           <ThemeToggle />
-          <form action={logout}><button className="btn sm ghost">Chiqish</button></form>
+          <form action={logout}><input type="hidden" name="phone" value={me.phone} /><button className="btn sm ghost">Chiqish</button></form>
         </div>
       </div>
       <p className="sub" style={{ marginTop: -8 }}>Har bir mijoz (o&apos;quv markazi, ekspert) — alohida platforma: o&apos;z kurslari, o&apos;quvchilari va adminlari.</p>

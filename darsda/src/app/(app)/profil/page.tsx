@@ -8,7 +8,7 @@ import { createCourse, saveCourse, savePlatform, switchCourse } from "@/app/acti
 import { InstallHint } from "@/components/InstallHint";
 import { ThemePicker } from "@/components/Theme";
 
-const ROLE: Record<string, string> = { student: "O'quvchi", curator: "Kurator", admin: "Administrator" };
+const ROLE: Record<string, string> = { student: "O'quvchi", curator: "Kurator", admin: "Administrator", super: "Super admin" };
 const PF: [keyof typeof DEFAULT_POINTS, string][] = [
   ["att_ontime", "Vaqtida kelsa"],
   ["att_late1", "Kechiksa (1-bosqich)"],
@@ -25,6 +25,10 @@ export default async function Profil() {
   const course = await currentCourse(u);
   const courses = u.role !== "student" ? await sql<{ id: number; title: string }[]>`select id, title from courses where platform_id = ${u.platform_id} order by id` : [];
   const [grp] = u.group_id ? await sql<{ name: string }[]>`select name from groups where id = ${u.group_id}` : [];
+  // Shu raqamdagi boshqa panellar (masalan, bitta odam ham admin, ham o'quvchi)
+  const other = await sql<{ role: string; platform: string | null }[]>`
+    select u.role, p.name as platform from users u left join platforms p on p.id = u.platform_id
+    where u.phone = ${u.phone} and u.active and u.id <> ${u.id} order by u.platform_id nulls first, u.role`;
 
   return (
     <main className="page">
@@ -36,6 +40,24 @@ export default async function Profil() {
           <div className="sub small">{ROLE[u.role]} · {u.platform_name}{grp ? ` · ${grp.name}` : ""}</div>
           <div className="tiny muted">+{u.phone}</div>
         </div>
+      </div>
+
+      <div className="card">
+        <h2 className="h2">Boshqa panelga o&apos;tish</h2>
+        {other.length > 0 ? (
+          <>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              {other.map((o, i) => <span key={i} className="pill">{ROLE[o.role] ?? o.role}{o.platform ? ` · ${o.platform}` : ""}</span>)}
+            </div>
+            <p className="tiny sub" style={{ margin: 0 }}>Bu raqamda yana {other.length} ta panel bor. Chiqasiz-u, kirish sahifasida raqamingiz tayyor turadi — o&apos;sha panel parolini yozasiz.</p>
+          </>
+        ) : (
+          <p className="tiny sub" style={{ margin: 0 }}>Boshqa akkauntga kirish uchun chiqing va boshqa raqam yoki parol bilan kiring.</p>
+        )}
+        <form action={logout}>
+          <input type="hidden" name="phone" value={u.phone} />
+          <button className="btn full">Chiqish va boshqa panelga kirish</button>
+        </form>
       </div>
 
       <div className="card">
