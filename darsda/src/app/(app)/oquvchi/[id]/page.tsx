@@ -60,6 +60,13 @@ export default async function Oquvchi({ params, searchParams }: { params: Promis
           <Roadmap lessons={ctx.lessons} states={R.states} here={R.here} tz={u.tz} />
         </div>
       )}
+      {u.role !== "student" && (
+        <Link href={`/parvoz?u=${s.id}`} className="card space-card flight">
+          <span className="emo">🚀</span>
+          <div className="grow"><b>Bozorga parvoz</b><div className="tiny" style={{ opacity: 0.85 }}>Ballari raketa ko&apos;rinishida</div></div>
+          <span style={{ fontSize: 20, opacity: 0.8 }}>›</span>
+        </Link>
+      )}
 
       <PointsCard u={u} course={course} uid={s.id} p={sp.p} base={`/oquvchi/${s.id}`} />
 

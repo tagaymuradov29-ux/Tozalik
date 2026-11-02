@@ -1,4 +1,6 @@
 import "server-only";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import { sql } from "./db";
 import wb1 from "@/data/1.json";
 import wb2 from "@/data/2.json";
@@ -106,4 +108,59 @@ export async function seedDemoProgress(courseId: number, userId: number, closed:
       }
     }
   }
+}
+
+const MORE = ["Aziza Nurmatova", "Otabek Rasulov", "Kamola Ismoilova", "Javohir Ergashev", "Shahnoza Mirzayeva", "Ulug'bek Sobirov",
+  "Feruza Hamidova", "Doniyor Xolmatov", "Gulnoza Abdullayeva", "Sherzod Nazarov", "Madina Saidova", "Rustam Jo'rayev",
+  "Zarina Qosimova", "Akmal Tursunov"];
+
+/** Namuna networking: qo'shimcha namuna o'quvchilar + 2 hafta oldin boshlangan tur, tasdiqlangan va tekshiruvdagi tanishuvlar.
+ *  Kursda hali networking bo'lmasa ishlaydi, aks holda hech narsa qilmaydi. */
+export async function seedDemoNet(courseId: number) {
+  const [ex] = await sql`select 1 from net_rounds where course_id = ${courseId}`;
+  if (ex) return false;
+  const [c] = await sql<{ platform_id: number }[]>`select platform_id from courses where id = ${courseId}`;
+  const groups = await sql<{ id: number }[]>`select id from groups where course_id = ${courseId} order by id`;
+  const [first] = await sql<{ starts_at: Date }[]>`select starts_at from lessons where course_id = ${courseId} order by n limit 1`;
+  const joined = new Date(new Date(first.starts_at).getTime() - 86400000);
+  for (const [i, name] of MORE.entries()) {
+    const [u] = await sql<{ id: number }[]>`
+      insert into users (platform_id, phone, password_hash, name, role, group_id, created_at)
+      values (${c.platform_id}, ${`99800000010${String(i).padStart(2, "0")}`}, ${bcrypt.hashSync(randomBytes(12).toString("hex"), 6)}, ${name + " (namuna)"}, 'student', ${groups[i % groups.length].id}, ${joined})
+      returning id`;
+    await seedDemoProgress(courseId, u.id, [6, 5, 4, 3, 2, 1, 0][i % 7]);
+  }
+  const ids = (await sql<{ id: number }[]>`select u.id from users u join groups g on g.id = u.group_id
+    where g.course_id = ${courseId} and u.role = 'student' and u.active order by u.id`).map((x) => x.id);
+  // Har kim har kim bilan bir marta: aylanma juftlash
+  const a: (number | null)[] = [...ids];
+  if (a.length % 2) a.push(null);
+  const rounds: [number, number][][] = [];
+  for (let r = 0; r < a.length - 1; r++) {
+    const pr: [number, number][] = [];
+    for (let i = 0; i < a.length / 2; i++) { const x = a[i], y = a[a.length - 1 - i]; if (x !== null && y !== null) pr.push([x, y]); }
+    rounds.push(pr);
+    a.splice(1, 0, a.pop()!);
+  }
+  const perWeek = 3, weeks = 4;
+  const start = new Date(Date.now() - 15 * 86400000);
+  const [r] = await sql<{ id: number }[]>`insert into net_rounds (course_id, title, starts_at, weeks, per_week, points)
+    values (${courseId}, 'Networking 2.0', ${start}, ${weeks}, ${perWeek}, 5) returning id`;
+  const me = ids[0];
+  for (let k = 0; k < Math.min(rounds.length, weeks * perWeek); k++) {
+    const week = Math.floor(k / perWeek) + 1;
+    for (const [x, y] of rounds[k]) {
+      const [p] = await sql<{ id: number }[]>`insert into net_pairs (round_id, week, a_id, b_id) values (${r.id}, ${week}, ${x}, ${y}) returning id`;
+      // 1–2-haftalar: ko'pchiligi tasdiqlangan, ba'zilari tekshiruvda; 3-hafta (joriy): bir nechtasi yuborilgan
+      const h = (x * 31 + y * 17 + k) % 10;
+      const mine = x === me || y === me;
+      const st = mine ? (week === 1 ? "approved" : week === 2 ? (h < 6 ? "approved" : "pending") : null)
+        : week <= 2 ? (h < 7 ? "approved" : h < 9 ? "pending" : null) : week === 3 ? (h < 3 ? "approved" : h < 5 ? "pending" : null) : null;
+      if (!st) continue;
+      for (const uid of [x, y]) {
+        await sql`insert into net_proofs (pair_id, user_id, text, status, points) values (${p.id}, ${uid}, 'Namuna', ${st}, ${st === "approved" ? 5 : null})`;
+      }
+    }
+  }
+  return true;
 }

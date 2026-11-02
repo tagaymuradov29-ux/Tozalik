@@ -7,6 +7,8 @@ import { Head, Avatar, Progress } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/Form";
 import { NetProof } from "@/components/NetProof";
 import { createRound, deleteRound } from "@/app/actions/net";
+import { skyData } from "@/lib/space";
+import { Sky } from "@/components/Sky";
 
 type Round = { id: number; title: string; starts_at: Date; weeks: number; per_week: number; points: number };
 const WEEK = 7 * 86400000;
@@ -16,11 +18,12 @@ export default async function Networking() {
   const u = await requireUser();
   const c = await currentCourse(u);
   if (!c) return <main className="page"><Head title="Networking" back="/" /><div className="card empty">Kurs yo&apos;q</div></main>;
-  const rounds = await sql<Round[]>`select * from net_rounds where course_id = ${c.id} order by starts_at desc`;
-  return u.role === "student" ? <Student u={u} rounds={rounds} /> : <Staff u={u} c={c} rounds={rounds} />;
+  const [rounds, K] = await Promise.all([sql<Round[]>`select * from net_rounds where course_id = ${c.id} order by starts_at desc`, skyData(u, c)]);
+  const sky = K && K.nodes.length > 1 ? <Sky K={K} /> : null;
+  return u.role === "student" ? <Student u={u} rounds={rounds} sky={sky} /> : <Staff u={u} c={c} rounds={rounds} sky={sky} />;
 }
 
-async function Student({ u, rounds }: { u: User; rounds: Round[] }) {
+async function Student({ u, rounds, sky }: { u: User; rounds: Round[]; sky: React.ReactNode }) {
   const pairs = await sql<{ id: number; round_id: number; week: number; pid: number; name: string; phone: string; group_name: string | null; st: string | null; fb: string | null; pts: number | null }[]>`
     select pa.id, pa.round_id, pa.week, pu.id as pid, pu.name, pu.phone, g.name as group_name,
       (select status from net_proofs x where x.pair_id = pa.id and x.user_id = ${u.id} order by x.id desc limit 1) as st,
@@ -70,6 +73,7 @@ async function Student({ u, rounds }: { u: User; rounds: Round[] }) {
         <Progress value={open.length ? (met / open.length) * 100 : 0} />
         <div className="tiny sub">Har bir hamkor bilan 15–20 daqiqa Zoom yoki uchrashuv. Isbot: 2 ta rasm — ikkovingiz ko&apos;ringan Zoom/selfi va hamkorni kontaktga saqlaganingiz.</div>
       </div>
+      {sky}
       <div className="card">
         <h2 className="h2">Bu haftaning hamkorlari</h2>
         {now.map((p) => <Card key={p.id} p={p} />)}
@@ -86,7 +90,7 @@ async function Student({ u, rounds }: { u: User; rounds: Round[] }) {
   );
 }
 
-async function Staff({ u, c, rounds }: { u: User; c: Course; rounds: Round[] }) {
+async function Staff({ u, c, rounds, sky }: { u: User; c: Course; rounds: Round[]; sky: React.ReactNode }) {
   const students = await scopeStudents(u, c.id);
   const ids = students.map((s) => s.id);
   const stats = await sql<{ round_id: number; pairs: number; ok: number; wait: number }[]>`
@@ -100,6 +104,7 @@ async function Staff({ u, c, rounds }: { u: User; c: Course; rounds: Round[] }) 
   return (
     <main className="page">
       <Head title="Networking" back="/" sub="Har hafta o'quvchilar yangi hamkorlar bilan tanishadi: 2 ta rasm isbot → kurator tasdiqlaydi → ball." />
+      {sky}
       {rounds.map((r) => {
         const s = stats.find((x) => x.round_id === r.id);
         const wk = curWeek(r);

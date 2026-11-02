@@ -5,6 +5,8 @@ import { currentCourse, getLessons, getTasks, pointsAll, scopeStudents } from "@
 import { nextLesson, ranking, road, studentCtx } from "@/lib/student";
 import { Roadmap, RoadLegend } from "@/components/Roadmap";
 import { journal } from "@/lib/progress";
+import { flightData, skyData } from "@/lib/space";
+import { SkyMini } from "@/components/Sky";
 import { fmtDay, fmtTime } from "@/lib/util";
 import { Head, Progress, RowLink, Avatar } from "@/components/ui";
 import { IBell, IQr } from "@/components/icons";
@@ -40,7 +42,9 @@ async function StudentHome({ u }: { u: User }) {
   const ctx = await studentCtx(u);
   if (!ctx) return <NoCourse u={u} />;
   const { course, lessons } = ctx;
-  const [rank, R] = [await ranking(course, u.group_id), road(ctx)];
+  const [rank, F, K] = await Promise.all([ranking(course, u.group_id), flightData(ctx, u.id), skyData(u, course)]);
+  const R = road(ctx);
+  const sat = F.A.filter((a) => a.st === "done").length;
   const me = rank.find((r) => r.id === u.id);
   const goal = course.points.goals.find((g) => (me?.total ?? 0) < g.pts) ?? course.points.goals.at(-1);
   const hl = lessons[R.here];
@@ -101,9 +105,19 @@ async function StudentHome({ u }: { u: User }) {
           ) : (
             <Link href={`/darslar/${hl.id}`} className="btn soft full">Darsni ochish</Link>
           )}
-          {R.debts > 1 && <div className="tiny" style={{ color: "var(--red)" }}>Yana {R.debts - 1} ta darsda qarz bor — xaritada qizil</div>}
+          {(() => { const other = R.debts - (R.states[R.here] === "debt" ? 1 : 0); return other > 0 && <div className="tiny" style={{ color: "var(--red)" }}>{R.states[R.here] === "debt" ? "Yana " : ""}{other} ta darsda qarz bor — xaritada qizil</div>; })()}
         </div>
       )}
+
+      <Link href="/parvoz" className="card space-card flight">
+        <span className="emo">🚀</span>
+        <div className="grow">
+          <b>Ballarim · Bozorga parvoz</b>
+          <div className="tiny" style={{ opacity: 0.85 }}>{F.pts} ball · {F.done}/{F.total} vazifa · {sat} ta amaliy</div>
+        </div>
+        <span style={{ fontSize: 20, opacity: 0.8 }}>›</span>
+      </Link>
+      {K && <SkyMini K={K} />}
 
       <div className="card">
         <div className="row between">
