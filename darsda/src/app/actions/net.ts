@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { currentCourse, notify } from "@/lib/course";
+import { currentCourse, notify, notifyStaff } from "@/lib/course";
 import { storeFiles } from "@/lib/files";
 import { localToUtc } from "@/lib/util";
 import type { FormState } from "./auth";
@@ -78,6 +78,7 @@ export async function sendProof(_: FormState, fd: FormData): Promise<FormState> 
   const saved = await storeFiles(u, files.slice(0, 4));
   if ("error" in saved) return { error: saved.error };
   await sql`insert into net_proofs (pair_id, user_id, files, text) values (${p.id}, ${u.id}, ${sql.json(saved.stored)}, ${String(fd.get("text") || "").trim()})`;
+  await notifyStaff(u.id, `🤝 ${u.name}: networking isboti`, "Tasdiqlash kutmoqda", "/tekshirish?v=net");
   revalidatePath("/", "layout");
   return { ok: "Yuborildi! Kurator tasdiqlagach ball qo'shiladi." };
 }

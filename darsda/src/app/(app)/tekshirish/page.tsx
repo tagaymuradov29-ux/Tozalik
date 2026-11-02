@@ -15,7 +15,7 @@ type Row = {
   id: number; text: string; link: string; files: { id: string; name: string; type: string; size: number }[];
   status: string; points: number | null; late: boolean; feedback: string; created_at: Date; graded_at: Date | null;
   task_id: number; title: string; kind: string; max_points: number; late_points: number | null;
-  user_id: number; name: string; group_name: string;
+  user_id: number; name: string; group_name: string; course: string; grader: string | null;
 };
 
 export default async function Tekshirish({ searchParams }: { searchParams: Promise<{ t?: string; g?: string; v?: string }> }) {
@@ -24,15 +24,18 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
   if (u.role === "student") redirect("/");
   const course = await currentCourse(u);
   if (!course) return <main className="page"><Head title="Tekshirish" /><div className="card empty">Kurs yo&apos;q</div></main>;
-  if (sp.v === "net") return <NetReview u={u} courseId={course.id} />;
+  if (sp.v === "net") return <NetReview u={u} />;
+  const many = (await sql<{ n: number }[]>`select count(*)::int as n from courses where platform_id = ${u.platform_id}`)[0].n > 1;
   const done = sp.v === "done";
   const tid = Number(sp.t || 0);
   const gid = Number(sp.g || 0);
   const rows = await sql<Row[]>`
     select s.id, s.text, s.link, s.files, s.status, s.points, s.late, s.feedback, s.created_at, s.graded_at,
-      t.id as task_id, t.title, t.kind, t.max_points, t.late_points, su.id as user_id, su.name, g.name as group_name
-    from submissions s join tasks t on t.id = s.task_id join users su on su.id = s.user_id join groups g on g.id = su.group_id
-    where t.course_id = ${course.id}
+      t.id as task_id, t.title, t.kind, t.max_points, t.late_points, su.id as user_id, su.name, g.name as group_name,
+      c.title as course, gb.name as grader
+    from submissions s join tasks t on t.id = s.task_id join courses c on c.id = t.course_id
+    join users su on su.id = s.user_id join groups g on g.id = su.group_id left join users gb on gb.id = s.graded_by
+    where c.platform_id = ${u.platform_id}
       and (${u.role === "admin"} or g.curator_id = ${u.id})
       and (${tid} = 0 or t.id = ${tid}) and (${gid} = 0 or g.id = ${gid})
       and ${done ? sql`s.status in ('approved','rejected')` : sql`s.status = 'pending'`}
@@ -40,8 +43,8 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
   const byTask = !done
     ? await sql<{ id: number; title: string; n: number }[]>`
         select t.id, t.title, count(*)::int as n from submissions s join tasks t on t.id = s.task_id
-        join users su on su.id = s.user_id join groups g on g.id = su.group_id
-        where t.course_id = ${course.id} and s.status = 'pending' and (${u.role === "admin"} or g.curator_id = ${u.id})
+        join users su on su.id = s.user_id join groups g on g.id = su.group_id join courses c on c.id = t.course_id
+        where c.platform_id = ${u.platform_id} and s.status = 'pending' and (${u.role === "admin"} or g.curator_id = ${u.id})
         group by t.id, t.title order by min(s.created_at)`
     : [];
 
@@ -65,7 +68,7 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
               <Link href={`/oquvchi/${r.user_id}`}><Avatar name={r.name} /></Link>
               <div className="grow">
                 <Link href={`/oquvchi/${r.user_id}`} className="h3 trunc" style={{ display: "block" }}>{r.name}</Link>
-                <div className="tiny muted">{r.group_name} · {fmtDT(r.created_at, u.tz)}</div>
+                <div className="tiny muted">{many ? `${r.course} · ` : ""}{r.group_name} · {fmtDT(r.created_at, u.tz)}</div>
               </div>
               {r.late && <span className="pill warn">kechikib</span>}
             </div>
@@ -99,6 +102,7 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
                 </div>
               </ActionForm>
             )}
+            {done && r.grader && <div className="tiny muted">✓ {r.grader} tekshirdi{r.graded_at ? ` · ${fmtDT(r.graded_at, u.tz)}` : ""}</div>}
             {done && r.feedback && <div className="tiny sub">💬 {r.feedback}</div>}
           </div>
         );
@@ -119,13 +123,13 @@ function Tabs({ v }: { v: string }) {
 }
 
 /** 🤝 Networking isbotlari: 2 ta rasm → tasdiqlash (+ball) yoki sabab bilan qaytarish */
-async function NetReview({ u, courseId }: { u: User; courseId: number }) {
+async function NetReview({ u }: { u: User }) {
   const rows = await sql<{ id: number; files: Row["files"]; text: string; created_at: Date; user_id: number; name: string; group_name: string; partner: string; week: number; points: number }[]>`
     select pr.id, pr.files, pr.text, pr.created_at, su.id as user_id, su.name, g.name as group_name, pu.name as partner, pa.week, r.points
     from net_proofs pr join net_pairs pa on pa.id = pr.pair_id join net_rounds r on r.id = pa.round_id
     join users su on su.id = pr.user_id join groups g on g.id = su.group_id
     join users pu on pu.id = case when pa.a_id = pr.user_id then pa.b_id else pa.a_id end
-    where r.course_id = ${courseId} and pr.status = 'pending' and (${u.role === "admin"} or g.curator_id = ${u.id})
+    where su.platform_id = ${u.platform_id} and pr.status = 'pending' and (${u.role === "admin"} or g.curator_id = ${u.id})
     order by pr.created_at limit 60`;
   return (
     <main className="page">

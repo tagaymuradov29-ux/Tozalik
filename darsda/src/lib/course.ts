@@ -67,7 +67,11 @@ export async function currentCourse(u: User): Promise<Course | null> {
   }
   const want = Number((await cookies()).get("course")?.value || 0);
   const list = await sql<Course[]>`select * from courses where platform_id = ${u.platform_id} order by id`;
-  const c = list.find((x) => x.id === want) ?? list[0];
+  // Kurator — tanlamagan bo'lsa, o'zi kuratorlik qiladigan guruh kursi
+  const mine = u.role === "curator" && !list.some((x) => x.id === want)
+    ? (await sql<{ course_id: number }[]>`select course_id from groups where curator_id = ${u.id} order by id limit 1`)[0]?.course_id
+    : undefined;
+  const c = list.find((x) => x.id === want) ?? list.find((x) => x.id === mine) ?? list[0];
   return c ? withDefaults(c) : null;
 }
 
@@ -190,6 +194,16 @@ export function attStatusFor(l: Lesson, c: Course, at = new Date()) {
 export async function notify(userIds: number[], title: string, body = "", url = "") {
   if (!userIds.length) return;
   await sql`insert into notifications ${sql(userIds.map((user_id) => ({ user_id, title, body, url })))}`;
+}
+
+/** O'quvchi biror narsa yuborganda: uning guruhi kuratori va platforma adminlariga xabar */
+export async function notifyStaff(studentId: number, title: string, body = "", url = "/tekshirish") {
+  const ids = await sql<{ id: number }[]>`
+    select g.curator_id as id from users s join groups g on g.id = s.group_id where s.id = ${studentId} and g.curator_id is not null
+    union
+    select a.id from users a join users s on s.platform_id = a.platform_id
+    where s.id = ${studentId} and a.role = 'admin' and a.active`;
+  await notify(ids.map((x) => x.id), title, body, url);
 }
 
 /** Workbook to'liqmi: har maydon to'ldirilgan bo'lishi kerak (recall/quiz — javob berilgan) */

@@ -5,7 +5,7 @@ import { storeFiles } from "@/lib/files";
 import { requireUser } from "@/lib/auth";
 import {
   attStatusFor, attWindow, checkAttCode, currentCourse, getLessons, repeatUsage, taskOpen,
-  wbMissing, wbText, type Sub, type Task,
+  notifyStaff, wbMissing, wbText, type Sub, type Task,
 } from "@/lib/course";
 import type { FormState } from "./auth";
 
@@ -49,6 +49,7 @@ export async function submitTask(_: FormState, fd: FormData): Promise<FormState>
   const pts = auto ? (late ? t.late_points ?? t.max_points : t.max_points) : null;
   await sql`insert into submissions (task_id, user_id, text, link, files, status, points, late, graded_at)
     values (${t.id}, ${u.id}, ${text}, ${link}, ${sql.json(stored)}, ${auto ? "approved" : "pending"}, ${pts}, ${late}, ${auto ? new Date() : null})`;
+  if (!auto) await notifyStaff(u.id, `📥 ${u.name}: «${t.title}»`, late ? "Muddatidan keyin yuborildi" : "Tekshirish kutmoqda");
   revalidatePath("/", "layout");
   return { ok: auto ? `Qabul qilindi: +${pts} ball` : "Yuborildi! Kurator tekshirgach ball qo'shiladi." };
 }
@@ -71,6 +72,7 @@ export async function submitWorkbook(_: FormState, fd: FormData): Promise<FormSt
   if (subs.length) return { error: subs[0].status === "approved" ? "Allaqachon qabul qilingan" : "Tekshirilmoqda" };
   const late = !!t.due_at && new Date(t.due_at) < new Date();
   await sql`insert into submissions (task_id, user_id, text, late) values (${t.id}, ${u.id}, ${wbText(t.workbook, data)}, ${late})`;
+  await notifyStaff(u.id, `📥 ${u.name}: «${t.title}»`, "Workbook tekshirish kutmoqda");
   revalidatePath("/", "layout");
   return { ok: "Workbook yuborildi! Kurator tekshiradi." };
 }

@@ -4,6 +4,7 @@ import { backToSuper } from "@/app/actions/auth";
 import { sql } from "@/lib/db";
 import { Nav } from "@/components/Nav";
 import { SW } from "@/components/SW";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { getBrand, on } from "@/lib/platform";
 import { BrandStyle } from "@/components/BrandStyle";
 
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {children}
       <Nav role={u.role} review={review} unread={unread} chat={on(b, "chat")} />
       <SW />
+      <AutoRefresh />
     </div>
   );
 }
