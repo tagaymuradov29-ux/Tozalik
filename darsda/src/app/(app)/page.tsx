@@ -6,6 +6,7 @@ import { nextLesson, ranking, studentCtx } from "@/lib/student";
 import { fmtDay, fmtDT, fmtTime, left } from "@/lib/util";
 import { Head, Progress, RowLink, StateBadge, Avatar } from "@/components/ui";
 import { IBell, IPlay, IQr } from "@/components/icons";
+import { ThemeToggle } from "@/components/Theme";
 
 export default async function Home() {
   const u = await requireUser();
@@ -13,7 +14,12 @@ export default async function Home() {
 }
 
 function Bell() {
-  return <Link href="/bildirishnomalar" className="back" aria-label="Bildirishnomalar"><IBell size={20} /></Link>;
+  return (
+    <div className="row" style={{ gap: 8 }}>
+      <ThemeToggle />
+      <Link href="/bildirishnomalar" className="back" aria-label="Bildirishnomalar"><IBell size={20} /></Link>
+    </div>
+  );
 }
 
 function NoCourse({ u }: { u: User }) {

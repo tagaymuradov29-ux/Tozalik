@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { createPlatform, enterPlatform, testAccounts } from "@/app/actions/super";
 import { changePassword, logout } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/Form";
+import { ThemeToggle } from "@/components/Theme";
 
 export default async function SuperPage({ searchParams }: { searchParams: Promise<{ test?: string }> }) {
   const me = await requireUser(["super"]);
@@ -18,7 +19,10 @@ export default async function SuperPage({ searchParams }: { searchParams: Promis
     <main className="page plain">
       <div className="row between">
         <h1 className="h1">Platformalar</h1>
-        <form action={logout}><button className="btn sm ghost">Chiqish</button></form>
+        <div className="row" style={{ gap: 8 }}>
+          <ThemeToggle />
+          <form action={logout}><button className="btn sm ghost">Chiqish</button></form>
+        </div>
       </div>
       <p className="sub" style={{ marginTop: -8 }}>Har bir mijoz (o&apos;quv markazi, ekspert) — alohida platforma: o&apos;z kurslari, o&apos;quvchilari va adminlari.</p>
 

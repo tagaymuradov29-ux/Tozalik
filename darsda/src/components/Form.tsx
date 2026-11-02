@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useTransition } from "react";
+import { useFormStatus } from "react-dom";
 
 type State = { error?: string; ok?: string } | undefined;
 const Pending = createContext(false);
@@ -41,7 +42,10 @@ export function ActionForm({
 export function Submit({
   children, className, confirm: ask, name, value, style,
 }: { children: React.ReactNode; className?: string; confirm?: string; name?: string; value?: string; style?: React.CSSProperties }) {
-  const pending = useContext(Pending);
+  // ActionForm ichida — o'z holati; oddiy <form action> ichida — React'ning formadagi holati
+  const ctx = useContext(Pending);
+  const { pending: native } = useFormStatus();
+  const pending = ctx || native;
   return (
     <button
       className={className ?? "btn full"}

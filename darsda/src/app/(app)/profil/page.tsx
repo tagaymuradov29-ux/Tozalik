@@ -6,6 +6,7 @@ import { ActionForm, Submit } from "@/components/Form";
 import { changePassword, logout } from "@/app/actions/auth";
 import { createCourse, saveCourse, savePlatform, switchCourse } from "@/app/actions/admin";
 import { InstallHint } from "@/components/InstallHint";
+import { ThemePicker } from "@/components/Theme";
 
 const ROLE: Record<string, string> = { student: "O'quvchi", curator: "Kurator", admin: "Administrator" };
 const PF: [keyof typeof DEFAULT_POINTS, string][] = [
@@ -35,6 +36,11 @@ export default async function Profil() {
           <div className="sub small">{ROLE[u.role]} · {u.platform_name}{grp ? ` · ${grp.name}` : ""}</div>
           <div className="tiny muted">+{u.phone}</div>
         </div>
+      </div>
+
+      <div className="card">
+        <h2 className="h2">Ko&apos;rinish</h2>
+        <ThemePicker />
       </div>
 
       <InstallHint />

@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       (select count(*)::int from notifications where user_id = ${u.id} and read_at is null) as unread`;
   const back = await getSigned<{ uid: number }>("back");
   return (
-    <div style={{ ["--brand" as string]: u.color }}>
+    <div>
       {back && (
         <form action={backToSuper} className="superbar">
           <span>👑 {u.platform_name} · admin sifatida</span>
