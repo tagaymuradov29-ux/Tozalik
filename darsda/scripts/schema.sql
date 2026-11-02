@@ -249,3 +249,6 @@ create table if not exists app_meta (
   value text not null default '',
   at timestamptz not null default now()
 );
+
+-- Platforma sozlamalari (konstruktor): logo, salomlashuv matni, yoqilgan modullar va ularning nomlari
+alter table platforms add column if not exists settings jsonb not null default '{}';

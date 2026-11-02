@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getBrand, label, on } from "@/lib/platform";
+import { redirect } from "next/navigation";
 import { requireUser, type User } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { currentCourse, scopeStudents, type Course } from "@/lib/course";
@@ -16,14 +18,17 @@ const curWeek = (r: Round) => Math.floor((Date.now() - new Date(r.starts_at).get
 
 export default async function Networking() {
   const u = await requireUser();
+  const b = await getBrand(u.platform_id);
+  if (!on(b, "networking")) redirect("/");
+  const T = label(b, "networking");
   const c = await currentCourse(u);
-  if (!c) return <main className="page"><Head title="Networking" back="/" /><div className="card empty">Kurs yo&apos;q</div></main>;
-  const [rounds, K] = await Promise.all([sql<Round[]>`select * from net_rounds where course_id = ${c.id} order by starts_at desc`, skyData(u, c)]);
-  const sky = K && K.nodes.length > 1 ? <Sky K={K} /> : null;
-  return u.role === "student" ? <Student u={u} rounds={rounds} sky={sky} /> : <Staff u={u} c={c} rounds={rounds} sky={sky} />;
+  if (!c) return <main className="page"><Head title={T} back="/" /><div className="card empty">Kurs yo&apos;q</div></main>;
+  const [rounds, K] = await Promise.all([sql<Round[]>`select * from net_rounds where course_id = ${c.id} order by starts_at desc`, on(b, "osmon") ? skyData(u, c) : null]);
+  const sky = K && K.nodes.length > 1 ? <Sky K={K} title={label(b, "osmon")} /> : null;
+  return u.role === "student" ? <Student u={u} rounds={rounds} sky={sky} T={T} /> : <Staff u={u} c={c} rounds={rounds} sky={sky} T={T} />;
 }
 
-async function Student({ u, rounds, sky }: { u: User; rounds: Round[]; sky: React.ReactNode }) {
+async function Student({ u, rounds, sky, T }: { u: User; rounds: Round[]; sky: React.ReactNode; T: string }) {
   const pairs = await sql<{ id: number; round_id: number; week: number; pid: number; name: string; phone: string; group_name: string | null; st: string | null; fb: string | null; pts: number | null }[]>`
     select pa.id, pa.round_id, pa.week, pu.id as pid, pu.name, pu.phone, g.name as group_name,
       (select status from net_proofs x where x.pair_id = pa.id and x.user_id = ${u.id} order by x.id desc limit 1) as st,
@@ -34,7 +39,7 @@ async function Student({ u, rounds, sky }: { u: User; rounds: Round[]; sky: Reac
     where (pa.a_id = ${u.id} or pa.b_id = ${u.id}) and pa.round_id = any(${rounds.map((r) => r.id)})
     order by pa.week, pu.name`;
   const r = rounds.find((x) => curWeek(x) >= 1 && curWeek(x) <= x.weeks) ?? rounds.find((x) => curWeek(x) > x.weeks) ?? rounds[0];
-  if (!r) return <main className="page"><Head title="Networking" back="/" /><div className="card empty">Networking hali boshlanmagan. Boshlanganda har hafta yangi tanishlar shu yerda chiqadi.</div></main>;
+  if (!r) return <main className="page"><Head title={T} back="/" /><div className="card empty">Networking hali boshlanmagan. Boshlanganda har hafta yangi tanishlar shu yerda chiqadi.</div></main>;
   const wk = Math.min(curWeek(r), r.weeks);
   const mine = pairs.filter((p) => p.round_id === r.id);
   const now = mine.filter((p) => p.week === wk);
@@ -64,7 +69,7 @@ async function Student({ u, rounds, sky }: { u: User; rounds: Round[]; sky: Reac
 
   return (
     <main className="page">
-      <Head title="Networking" back="/" sub={`${r.title} · ${wk}/${r.weeks}-hafta`} />
+      <Head title={T} back="/" sub={`${r.title} · ${wk}/${r.weeks}-hafta`} />
       <div className="card">
         <div className="row between">
           <div><div className="sub small">Tanishuvlar</div><div className="big">{met}<span className="muted" style={{ fontSize: 18 }}> / {open.length}</span></div></div>
@@ -90,7 +95,7 @@ async function Student({ u, rounds, sky }: { u: User; rounds: Round[]; sky: Reac
   );
 }
 
-async function Staff({ u, c, rounds, sky }: { u: User; c: Course; rounds: Round[]; sky: React.ReactNode }) {
+async function Staff({ u, c, rounds, sky, T }: { u: User; c: Course; rounds: Round[]; sky: React.ReactNode; T: string }) {
   const students = await scopeStudents(u, c.id);
   const ids = students.map((s) => s.id);
   const stats = await sql<{ round_id: number; pairs: number; ok: number; wait: number }[]>`
@@ -103,7 +108,7 @@ async function Staff({ u, c, rounds, sky }: { u: User; c: Course; rounds: Round[
     select user_id, count(*)::int as ok from net_proofs where status = 'approved' and user_id = any(${ids}) group by user_id`;
   return (
     <main className="page">
-      <Head title="Networking" back="/" sub="Har hafta o'quvchilar yangi hamkorlar bilan tanishadi: 2 ta rasm isbot → kurator tasdiqlaydi → ball." />
+      <Head title={T} back="/" sub="Har hafta o'quvchilar yangi hamkorlar bilan tanishadi: 2 ta rasm isbot → kurator tasdiqlaydi → ball." />
       {sky}
       {rounds.map((r) => {
         const s = stats.find((x) => x.round_id === r.id);

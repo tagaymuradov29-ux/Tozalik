@@ -28,6 +28,9 @@ export const IReview = ({ size }: P) => (
 export const IUsers = ({ size }: P) => (
   <svg {...s(size)}><circle cx="9" cy="8" r="3.2" /><path d="M3 19c.6-3 3-4.8 6-4.8s5.4 1.8 6 4.8" /><path d="M16 5.2a3 3 0 0 1 0 5.6M18 14.6c1.6.6 2.7 2 3 4.4" /></svg>
 );
+export const IUser = ({ size }: P) => (
+  <svg {...s(size)}><circle cx="12" cy="8" r="3.6" /><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" /></svg>
+);
 export const IBack = ({ size }: P) => (
   <svg {...s(size)}><path d="M15 5 8 12l7 7" /></svg>
 );

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getBrand, on } from "@/lib/platform";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { currentCourse } from "@/lib/course";
@@ -7,6 +9,7 @@ import { Chat } from "@/components/Chat";
 
 export default async function ChatPage({ searchParams }: { searchParams: Promise<{ g?: string }> }) {
   const u = await requireUser();
+  if (!on(await getBrand(u.platform_id), "chat")) redirect("/");
   const course = await currentCourse(u);
   const groups = course
     ? await sql<{ id: number; name: string }[]>`

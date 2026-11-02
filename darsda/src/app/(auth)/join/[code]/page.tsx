@@ -1,13 +1,14 @@
 import { sql } from "@/lib/db";
 import { join } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/Form";
+import { brandCss, type Settings } from "@/lib/platform";
 
 const ROLE: Record<string, string> = { student: "o'quvchi", curator: "kurator", admin: "administrator" };
 
 export default async function JoinPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const [inv] = await sql<{ role: string; platform: string; group_name: string | null; course: string | null }[]>`
-    select i.role, p.name as platform, g.name as group_name, c.title as course
+  const [inv] = await sql<{ role: string; platform: string; color: string; settings: Settings; group_name: string | null; course: string | null }[]>`
+    select i.role, p.name as platform, p.color, p.settings, g.name as group_name, c.title as course
     from invites i join platforms p on p.id = i.platform_id
     left join groups g on g.id = i.group_id left join courses c on c.id = g.course_id
     where i.code = ${code} and i.active`;
@@ -17,8 +18,15 @@ export default async function JoinPage({ params }: { params: Promise<{ code: str
         <div className="card"><p className="err">Bu taklif havolasi eskirgan yoki noto&apos;g&apos;ri.</p></div>
       ) : (
         <>
+          <style dangerouslySetInnerHTML={{ __html: brandCss(inv.color) }} />
           <div className="stack" style={{ marginBottom: 6 }}>
-            <span className="pill ok" style={{ alignSelf: "flex-start" }}>{inv.platform}</span>
+            <div className="row" style={{ gap: 10 }}>
+              {inv.settings?.logo && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={inv.settings.logo} alt="" width={44} height={44} style={{ borderRadius: 12, objectFit: "contain", background: "#fff" }} />
+              )}
+              <span className="pill ok">{inv.platform}</span>
+            </div>
             <h1 className="h1" style={{ margin: 0 }}>Ro&apos;yxatdan o&apos;tish</h1>
             <p className="sub" style={{ margin: 0 }}>
               Siz {inv.course ? <b>{inv.course}</b> : "platformaga"}

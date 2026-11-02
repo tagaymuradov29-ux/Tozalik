@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getBrand, on } from "@/lib/platform";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { currentCourse } from "@/lib/course";
@@ -11,6 +12,7 @@ type W = { id: number; title: string; teams: number; phase: "join" | "vote" | "d
 export default async function WorkshopPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const u = await requireUser();
+  if (!on(await getBrand(u.platform_id), "workshop")) redirect("/");
   const c = await currentCourse(u);
   const [w] = await sql<W[]>`
     select w.id, w.title, w.teams, w.phase, w.points, w.res, l.n || '-dars. ' || l.title as lesson

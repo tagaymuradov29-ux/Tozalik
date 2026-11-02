@@ -6,6 +6,7 @@ import { nextLesson, ranking, road, studentCtx } from "@/lib/student";
 import { Roadmap, RoadLegend } from "@/components/Roadmap";
 import { journal } from "@/lib/progress";
 import { flightData, skyData } from "@/lib/space";
+import { getBrand, label, on, type Brand } from "@/lib/platform";
 import { SkyMini } from "@/components/Sky";
 import { fmtDay, fmtTime } from "@/lib/util";
 import { Head, Progress, RowLink, Avatar } from "@/components/ui";
@@ -43,7 +44,8 @@ async function StudentHome({ u }: { u: User }) {
   const ctx = await studentCtx(u);
   if (!ctx) return <NoCourse u={u} />;
   const { course, lessons } = ctx;
-  const [rank, F, K] = await Promise.all([ranking(course, u.group_id), flightData(ctx, u.id), skyData(u, course)]);
+  const b = await getBrand(u.platform_id);
+  const [rank, F, K] = await Promise.all([ranking(course, u.group_id), flightData(ctx, u.id), on(b, "osmon") ? skyData(u, course) : null]);
   const R = road(ctx);
   const sat = F.A.filter((a) => a.st === "done").length;
   const me = rank.find((r) => r.id === u.id);
@@ -65,10 +67,12 @@ async function StudentHome({ u }: { u: User }) {
             <span className="tiny muted">Jami ball</span>
             <span className="big">{me?.total ?? 0}</span>
           </div>
-          <Link href="/natijalar" className="stack" style={{ gap: 0, alignItems: "center" }}>
-            <span className="tiny muted">Guruhda</span>
-            <b style={{ fontSize: 18 }}>{me?.rank ?? "—"}-o&apos;rin</b>
-          </Link>
+          {on(b, "reyting") && (
+            <Link href="/natijalar" className="stack" style={{ gap: 0, alignItems: "center" }}>
+              <span className="tiny muted">Guruhda</span>
+              <b style={{ fontSize: 18 }}>{me?.rank ?? "—"}-o&apos;rin</b>
+            </Link>
+          )}
           <div className="stack" style={{ gap: 0, alignItems: "flex-end" }}>
             <span className="tiny muted">Yopilgan darslar</span>
             <b style={{ fontSize: 18 }}>{R.closed}/{R.opened}</b>
@@ -110,15 +114,15 @@ async function StudentHome({ u }: { u: User }) {
         </div>
       )}
 
-      <Link href="/parvoz" className="card space-card flight">
+      {on(b, "parvoz") && <Link href="/parvoz" className="card space-card flight">
         <span className="emo">🚀</span>
         <div className="grow">
-          <b>Ballarim · Bozorga parvoz</b>
+          <b>Ballarim · {label(b, "parvoz")}</b>
           <div className="tiny" style={{ opacity: 0.85 }}>{F.pts} ball · {F.done}/{F.total} vazifa · {sat} ta amaliy</div>
         </div>
         <span style={{ fontSize: 20, opacity: 0.8 }}>›</span>
-      </Link>
-      {K && <SkyMini K={K} />}
+      </Link>}
+      {K && <SkyMini K={K} title={label(b, "osmon")} />}
 
       <div className="card">
         <div className="row between">
@@ -129,14 +133,14 @@ async function StudentHome({ u }: { u: User }) {
         <Roadmap lessons={lessons} states={R.states} here={R.here} tz={u.tz} />
       </div>
 
-      <Extras u={u} courseId={course.id} />
+      <Extras u={u} courseId={course.id} b={b} />
       <ProfileRow u={u} />
     </main>
   );
 }
 
 async function StaffHome({ u }: { u: User }) {
-  const course = await currentCourse(u);
+  const [course, b] = await Promise.all([currentCourse(u), getBrand(u.platform_id)]);
   if (!course) return <NoCourse u={u} />;
   const [students, lessons, tasks, pts] = await Promise.all([
     scopeStudents(u, course.id), getLessons(course.id), getTasks(course.id), pointsAll(course),
@@ -174,6 +178,13 @@ async function StaffHome({ u }: { u: User }) {
   return (
     <main className="page">
       <Head title="Bugun" right={<Bell name={u.name} />} sub={`${course.title} · ${u.role === "admin" ? "Administrator" : "Kurator"}`} />
+      {u.role === "admin" && (
+        <Link href="/sozlash" className="card row" style={{ gap: 12, background: "var(--brand-soft)" }}>
+          <span style={{ fontSize: 24 }}>⚙️</span>
+          <div className="grow"><div className="h3">Platformani sozlash</div><div className="tiny muted">Brend, kurslar, darslar jadvali, ball tizimi, modullar</div></div>
+          <span className="muted">›</span>
+        </Link>
+      )}
 
       <div className="grid2">
         <Link href="/tekshirish" className="card tight">
@@ -258,7 +269,7 @@ async function StaffHome({ u }: { u: User }) {
           ))}
         </div>
       </div>
-      <Extras u={u} courseId={course.id} />
+      <Extras u={u} courseId={course.id} b={b} />
       <ProfileRow u={u} />
     </main>
   );
@@ -281,7 +292,9 @@ function ProfileRow({ u }: { u: User }) {
   );
 }
 
-async function Extras({ u, courseId }: { u: User; courseId: number }) {
+async function Extras({ u, courseId, b }: { u: User; courseId: number; b: Brand | null }) {
+  const showNet = on(b, "networking"), showWs = on(b, "workshop");
+  if (!showNet && !showWs) return null;
   const [[ws], [net]] = await Promise.all([
     sql<{ id: number; title: string; phase: string }[]>`
       select id, title, phase from workshops where course_id = ${courseId} order by (phase = 'done'), created_at desc limit 1`,
@@ -294,16 +307,16 @@ async function Extras({ u, courseId }: { u: User; courseId: number }) {
   const wsTxt = !ws ? "Hali yo'q" : ws.phase === "join" ? "Jamoaga yozilish ochiq" : ws.phase === "vote" ? "Baholash ketmoqda" : "Natijalar";
   return (
     <div className="grid2">
-      <Link href="/networking" className="card tight">
+      {showNet && <Link href="/networking" className="card tight">
         <span style={{ fontSize: 18 }}>🤝</span>
-        <span className="h3">Networking</span>
+        <span className="h3">{label(b, "networking")}</span>
         <span className="tiny muted">{u.role === "student" ? (net?.total ? `${net.ok}/${net.total} tanishuv` : "Tez orada") : "Juftliklar va isbotlar"}</span>
-      </Link>
-      <Link href={ws ? `/workshop/${ws.id}` : "/workshop"} className="card tight">
+      </Link>}
+      {showWs && <Link href={ws ? `/workshop/${ws.id}` : "/workshop"} className="card tight">
         <span style={{ fontSize: 18 }}>🏆</span>
-        <span className="h3">Workshop</span>
+        <span className="h3">{label(b, "workshop")}</span>
         <span className="tiny muted" style={ws && ws.phase !== "done" ? { color: "var(--brand)", fontWeight: 600 } : undefined}>{wsTxt}</span>
-      </Link>
+      </Link>}
     </div>
   );
 }

@@ -150,14 +150,14 @@ function useSky(K: SkyData, mini: boolean, gsel: number | null, onTip?: (h: stri
 }
 
 /** Bosh sahifadagi kichik karta — networking sahifasiga olib boradi */
-export function SkyMini({ K }: { K: SkyData }) {
+export function SkyMini({ K, title = "Tanishuvlar osmoni" }: { K: SkyData; title?: string }) {
   const { ref } = useSky(K, true, null);
   const ok = K.edges.filter((e) => e[2] === "ok").length;
   return (
     <Link href="/networking" className="card space-card">
       <canvas ref={ref} style={{ width: 56, height: 56, flex: "none", borderRadius: 10 }} />
       <div className="grow">
-        <b>✨ Tanishuvlar osmoni</b>
+        <b>✨ {title}</b>
         <div className="tiny" style={{ opacity: 0.85 }}>{ok} ta yulduz yongan{K.items.all ? ` · bu hafta ${K.items.ok}/${K.items.all}` : ""}</div>
       </div>
       <span style={{ fontSize: 20, opacity: 0.8 }}>›</span>
@@ -166,7 +166,7 @@ export function SkyMini({ K }: { K: SkyData }) {
 }
 
 /** Katta osmon: o'quvchida — o'zi markazda, xodimda — butun kurs, guruhlar bo'yicha */
-export function Sky({ K }: { K: SkyData }) {
+export function Sky({ K, title = "Tanishuvlar osmoni" }: { K: SkyData; title?: string }) {
   const [tip, setTip] = useState("✨ Yulduzni bosing — kim ekanini ko'rasiz");
   const [g, setG] = useState<number | null>(null);
   const { ref, litRef } = useSky(K, false, g, setTip);
@@ -174,6 +174,7 @@ export function Sky({ K }: { K: SkyData }) {
   const ok = K.edges.filter((e) => e[2] === "ok").length;
   return (
     <div className="card" style={{ padding: 8 }}>
+      <div className="h3" style={{ padding: "2px 4px 0" }}>✨ {title}</div>
       <div className="sky-box">
         <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block", cursor: "pointer" }} aria-label="Tanishuvlar osmoni" />
         <div className="sky-top">

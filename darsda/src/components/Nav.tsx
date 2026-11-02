@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IBook, IChart, IChat, IHome, IPlus, IQr, IReview, IUsers } from "./icons";
+import { IBook, IChart, IChat, IHome, IPlus, IQr, IReview, IUser, IUsers } from "./icons";
 
 type Item = { href: string; label: string; icon: React.ReactNode; badge?: number; fab?: boolean };
 
-export function Nav({ role, review, unread }: { role: string; review: number; unread: number }) {
+export function Nav({ role, review, unread, chat = true }: { role: string; review: number; unread: number; chat?: boolean }) {
   const path = usePathname();
   const items: Item[] =
     role === "student"
@@ -31,6 +31,9 @@ export function Nav({ role, review, unread }: { role: string; review: number; un
             { href: "/tekshirish", label: "Tekshirish", icon: <IReview />, badge: review },
             { href: "/guruh", label: "Odamlar", icon: <IUsers /> },
           ];
+  // Chat o'chirilgan bo'lsa, uning o'rnida Profil turadi
+  const me: Item = { href: "/profil", label: "Profil", icon: <IUser /> };
+  if (!chat) items.forEach((it, i) => { if (it.href === "/chat") items[i] = me; });
   const active = (h: string) => (h === "/" ? path === "/" : path.startsWith(h));
   return (
     <nav className="nav">

@@ -1,0 +1,54 @@
+import "server-only";
+import { cache } from "react";
+import { sql } from "./db";
+
+/** Yoqib-o'chiriladigan modullar. Har bir mijoz o'ziga keraklisini tanlaydi va nomini o'zgartira oladi. */
+export const MODS = [
+  { key: "parvoz", label: "Bozorga parvoz", emoji: "🚀", about: "Ballar raketa ko'rinishida: orbita va Oy — kurs maqsadlari" },
+  { key: "osmon", label: "Tanishuvlar osmoni", emoji: "✨", about: "Networking tanishuvlari yulduzlar xaritasida" },
+  { key: "networking", label: "Networking", emoji: "🤝", about: "Har hafta juftliklar, isbot va ball" },
+  { key: "workshop", label: "Workshop", emoji: "🏆", about: "Jamoaviy topshiriq va ovoz berish" },
+  { key: "chat", label: "Chat", emoji: "💬", about: "Guruh chati va kurator bilan yozishma" },
+  { key: "reyting", label: "Reyting", emoji: "📊", about: "O'quvchilar o'rtasida ball bo'yicha o'rinlar" },
+] as const;
+export type ModKey = (typeof MODS)[number]["key"];
+
+export type Settings = {
+  logo?: string;          // kichik rasm (data:image/...), 256px gacha
+  welcome?: string;       // kirish sahifasidagi matn
+  mods?: Partial<Record<ModKey, boolean>>;
+  labels?: Partial<Record<ModKey, string>>;
+  orbit?: string;         // Bozorga parvoz: orbita va Oy belgilari
+  moon?: string;
+};
+
+export type Brand = { id: number; slug: string; name: string; color: string; settings: Settings };
+
+export const getBrand = cache(async (pid: number | null): Promise<Brand | null> => {
+  if (!pid) return null;
+  const [p] = await sql<Brand[]>`select id, slug, name, color, settings from platforms where id = ${pid}`;
+  return p ?? null;
+});
+
+export const brandBySlug = cache(async (slug: string): Promise<Brand | null> => {
+  const [p] = await sql<Brand[]>`select id, slug, name, color, settings from platforms where slug = ${slug.toLowerCase()}`;
+  return p ?? null;
+});
+
+/** Modul yoqilganmi (sukut bo'yicha — hammasi yoqilgan) */
+export const on = (b: Brand | null, k: ModKey) => b?.settings?.mods?.[k] !== false;
+/** Modulning mijoz bergan nomi yoki asl nomi */
+export const label = (b: Brand | null, k: ModKey) => b?.settings?.labels?.[k]?.trim() || MODS.find((m) => m.key === k)!.label;
+
+export const okColor = (c: string | null | undefined) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c : "#3390EC");
+
+/** Platforma rangini butun ilovaga qo'llaydigan CSS (kunduzgi va tungi rejim uchun) */
+export function brandCss(color: string) {
+  const c = okColor(color);
+  const dark = `--brand: color-mix(in srgb, ${c} 78%, #fff); --brand-ink: color-mix(in srgb, ${c} 55%, #fff);
+    --brand-soft: color-mix(in srgb, ${c} 24%, #161d2f); --fab: var(--brand); --blue: var(--brand-ink); --blue-soft: var(--brand-soft);`;
+  return `:root { --brand: ${c}; --brand-ink: color-mix(in srgb, ${c} 80%, #000); --brand-soft: color-mix(in srgb, ${c} 11%, #fff);
+    --chart-on: ${c}; --blue: var(--brand-ink); --blue-soft: var(--brand-soft); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ${dark} } }
+  :root[data-theme="dark"] { ${dark} }`;
+}

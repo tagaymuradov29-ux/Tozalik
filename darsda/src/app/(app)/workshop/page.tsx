@@ -1,3 +1,5 @@
+import { getBrand, label, on } from "@/lib/platform";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { currentCourse, getLessons } from "@/lib/course";
@@ -10,8 +12,11 @@ const PHASE: Record<string, [string, string]> = { join: ["info", "Jamoaga yozili
 
 export default async function Workshops() {
   const u = await requireUser();
+  const b = await getBrand(u.platform_id);
+  if (!on(b, "workshop")) redirect("/");
+  const T = label(b, "workshop");
   const c = await currentCourse(u);
-  if (!c) return <main className="page"><Head title="Workshop" back="/" /><div className="card empty">Kurs yo&apos;q</div></main>;
+  if (!c) return <main className="page"><Head title={T} back="/" /><div className="card empty">Kurs yo&apos;q</div></main>;
   const [list, lessons] = await Promise.all([
     sql<{ id: number; title: string; phase: string; teams: number; n: number | null; members: number; created_at: Date; my_team: number | null; my_pts: number | null }[]>`
       select w.id, w.title, w.phase, w.teams, l.n, w.created_at,
@@ -23,7 +28,7 @@ export default async function Workshops() {
   ]);
   return (
     <main className="page">
-      <Head title="Workshop" back="/" sub="Jamoalarga bo'linib vazifa bajarasiz, taqdimot qilasiz va bir-biringizni 1–10 ball bilan baholaysiz. O'rin bo'yicha ball beriladi." />
+      <Head title={T} back="/" sub="Jamoalarga bo'linib vazifa bajarasiz, taqdimot qilasiz va bir-biringizni 1–10 ball bilan baholaysiz. O'rin bo'yicha ball beriladi." />
       <div className="card">
         <div className="list">
           {list.map((w) => (

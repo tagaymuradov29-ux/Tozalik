@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getBrand, label, on } from "@/lib/platform";
 import { requireUser } from "@/lib/auth";
 import { currentCourse, scopeStudents } from "@/lib/course";
 import { studentCtx } from "@/lib/student";
@@ -10,6 +11,8 @@ import { Flight, FlightLegend } from "@/components/Flight";
 export default async function Parvoz({ searchParams }: { searchParams: Promise<{ u?: string }> }) {
   const sp = await searchParams;
   const u = await requireUser();
+  const b = await getBrand(u.platform_id);
+  if (!on(b, "parvoz")) redirect("/");
   let uid = u.id, who = "";
   if (u.role !== "student") {
     const c = await currentCourse(u);
@@ -23,7 +26,7 @@ export default async function Parvoz({ searchParams }: { searchParams: Promise<{
   const sat = F.A.filter((a) => a.st === "done").length, given = F.A.filter((a) => a.st !== "locked").length;
   return (
     <main className="page">
-      <Head title="🚀 Bozorga parvoz" back={who ? `/oquvchi/${uid}` : "/"} sub={who || undefined} />
+      <Head title={`🚀 ${label(b, "parvoz")}`} back={who ? `/oquvchi/${uid}` : "/"} sub={who || undefined} />
       <div className="card">
         <div className="tiny sub">
           Raketa ballaringiz bilan ko&apos;tariladi: <b>{F.orbit.pts}</b> ballda orbitaga chiqasiz ({F.orbit.label}), <b>{F.moon.pts}</b> da Oyga qo&apos;nasiz ({F.moon.label}).

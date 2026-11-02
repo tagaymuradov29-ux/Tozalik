@@ -4,6 +4,7 @@ import { backToSuper } from "@/app/actions/auth";
 import { sql } from "@/lib/db";
 import { Nav } from "@/components/Nav";
 import { SW } from "@/components/SW";
+import { brandCss, getBrand, on } from "@/lib/platform";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const u = await requireUser();
@@ -18,9 +19,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         where su.platform_id = ${u.platform_id} and pr.status = 'pending'
           and (${u.role === "admin"} or (${u.role === "curator"} and g.curator_id = ${u.id}))) as review,
       (select count(*)::int from notifications where user_id = ${u.id} and read_at is null) as unread`;
-  const back = await getSigned<{ uid: number }>("back");
+  const [back, b] = await Promise.all([getSigned<{ uid: number }>("back"), getBrand(u.platform_id)]);
   return (
     <div>
+      {b && <style dangerouslySetInnerHTML={{ __html: brandCss(b.color) }} />}
       {back && (
         <form action={backToSuper} className="superbar">
           <span>👑 {u.platform_name} · admin sifatida</span>
@@ -28,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </form>
       )}
       {children}
-      <Nav role={u.role} review={review} unread={unread} />
+      <Nav role={u.role} review={review} unread={unread} chat={on(b, "chat")} />
       <SW />
     </div>
   );

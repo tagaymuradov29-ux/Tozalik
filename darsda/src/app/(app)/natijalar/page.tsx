@@ -5,6 +5,7 @@ import { currentCourse, type Course } from "@/lib/course";
 import { ranking } from "@/lib/student";
 import { Head, RowLink } from "@/components/ui";
 import { PointsCard } from "@/components/PointsCard";
+import { getBrand, on } from "@/lib/platform";
 
 type SP = { p?: string; r?: string; g?: string };
 
@@ -17,7 +18,7 @@ export default async function Natijalar({ searchParams }: { searchParams: Promis
     <main className="page">
       <Head title="Natijalar" />
       {u.role === "student" && <PointsCard u={u} course={course} uid={u.id} p={sp.p} base="/natijalar" />}
-      <Rating u={u} course={course} sp={sp} />
+      {(u.role !== "student" || on(await getBrand(u.platform_id), "reyting")) && <Rating u={u} course={course} sp={sp} />}
     </main>
   );
 }
