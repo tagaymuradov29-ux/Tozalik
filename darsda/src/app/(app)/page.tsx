@@ -130,6 +130,7 @@ async function StudentHome({ u }: { u: User }) {
       </div>
 
       <Extras u={u} courseId={course.id} />
+      <ProfileRow u={u} />
     </main>
   );
 }
@@ -258,12 +259,28 @@ async function StaffHome({ u }: { u: User }) {
         </div>
       </div>
       <Extras u={u} courseId={course.id} />
-      <Link href="/profil" className="btn ghost full">Profil va sozlamalar</Link>
+      <ProfileRow u={u} />
     </main>
   );
 }
 
 /** Networking va Workshop kirish kartalari (hozirgi holati bilan) */
+const ROLE_UZ: Record<string, string> = { student: "O'quvchi", curator: "Kurator", admin: "Administrator" };
+
+/** Pastdagi aniq ko'rinadigan qator: profil, chiqish va boshqa panelga o'tish */
+function ProfileRow({ u }: { u: User }) {
+  return (
+    <Link href="/profil" className="card row" style={{ gap: 12 }}>
+      <Avatar name={u.name} size={40} />
+      <div className="grow">
+        <div className="h3">Profil · Chiqish</div>
+        <div className="tiny muted">{ROLE_UZ[u.role] ?? u.role} paneli · boshqa panelga o&apos;tish shu yerda</div>
+      </div>
+      <span className="muted" style={{ fontSize: 20 }}>›</span>
+    </Link>
+  );
+}
+
 async function Extras({ u, courseId }: { u: User; courseId: number }) {
   const [[ws], [net]] = await Promise.all([
     sql<{ id: number; title: string; phase: string }[]>`
