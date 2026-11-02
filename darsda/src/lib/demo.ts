@@ -81,3 +81,29 @@ export async function seedDemoCourse(platformId: number) {
   await sql`update tasks set per_week = 3 where course_id = ${c.id} and title = 'Reels'`;
   return c.id;
 }
+
+/** Namuna natijalar: o'quvchi birinchi `closed` ta darsni to'liq yopgan, keyingisi tekshiruvda, undan keyingisida qarz.
+ *  Jurnal va yo'l xaritasi bo'sh ko'rinmasligi uchun. */
+export async function seedDemoProgress(courseId: number, userId: number, closed: number) {
+  const lessons = await sql<{ id: number; starts_at: Date }[]>`
+    select id, starts_at from lessons where course_id = ${courseId} and starts_at <= now() order by n`;
+  const tasks = await sql<{ id: number; lesson_id: number | null; max_points: number; kind: string }[]>`
+    select id, lesson_id, max_points, kind from tasks where course_id = ${courseId} and lesson_id is not null`;
+  for (let i = 0; i < lessons.length; i++) {
+    const l = lessons[i];
+    const at = new Date(new Date(l.starts_at).getTime() + 20 * 3600000);
+    if (i < closed + 1) {
+      const late = (i * 7 + userId) % 5 === 0 ? 12 : 0;
+      await sql`insert into attendance (lesson_id, user_id, status, late_min, src) values (${l.id}, ${userId}, ${late ? "late" : "ontime"}, ${late}, 'kod')
+        on conflict do nothing`;
+    }
+    for (const t of tasks.filter((x) => x.lesson_id === l.id)) {
+      if (i < closed) {
+        await sql`insert into submissions (task_id, user_id, text, status, points, graded_at, created_at)
+          values (${t.id}, ${userId}, 'Namuna javob', 'approved', ${t.max_points}, ${at}, ${at})`;
+      } else if (i === closed && t.kind !== "workbook") {
+        await sql`insert into submissions (task_id, user_id, text, status, created_at) values (${t.id}, ${userId}, 'Namuna javob', 'pending', ${at})`;
+      }
+    }
+  }
+}

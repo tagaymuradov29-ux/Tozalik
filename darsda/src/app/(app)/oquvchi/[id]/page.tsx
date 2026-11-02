@@ -6,6 +6,8 @@ import { attPoints, currentCourse, getLessons, getTasks, taskState, type Sub } f
 import { fmtDate } from "@/lib/util";
 import { Head, StateBadge, Avatar, ActBtn } from "@/components/ui";
 import { PointsCard } from "@/components/PointsCard";
+import { Roadmap, RoadLegend } from "@/components/Roadmap";
+import { road, studentCtx } from "@/lib/student";
 import { ActionForm, Submit } from "@/components/Form";
 import { addBonus, deleteBonus, markAttendance, nudge, toggleActive, updateStudent } from "@/app/actions/staff";
 
@@ -29,6 +31,8 @@ export default async function Oquvchi({ params, searchParams }: { params: Promis
     u.role === "admin" ? sql<{ id: number; name: string }[]>`select id, name from groups where course_id = ${course.id} order by name` : [],
   ]);
   const started = lessons.filter((l) => new Date(l.starts_at) <= new Date());
+  const ctx = await studentCtx(u, s.id);
+  const R = ctx ? road(ctx) : null;
   const ATT: Record<string, [string, string]> = { ontime: ["ok", "Vaqtida"], late: ["warn", "Kechikdi"], absent: ["bad", "Kelmadi"], excused: ["info", "Sababli"] };
 
   return (
@@ -45,6 +49,17 @@ export default async function Oquvchi({ params, searchParams }: { params: Promis
         <a href={`tel:+${s.phone}`} className="btn ghost">📞 Qo&apos;ng&apos;iroq</a>
         <form action={nudge}><input type="hidden" name="user_id" value={s.id} /><button className="btn ghost full">🔔 Eslatish</button></form>
       </div>
+
+      {R && ctx && (
+        <div className="card">
+          <div className="row between">
+            <h2 className="h2">Yo&apos;l xaritasi</h2>
+            <span className={`pill ${R.debts ? "bad" : "ok"}`}>{R.closed}/{R.opened} yopilgan{R.debts ? ` · ${R.debts} qarz` : ""}</span>
+          </div>
+          <RoadLegend />
+          <Roadmap lessons={ctx.lessons} states={R.states} here={R.here} tz={u.tz} />
+        </div>
+      )}
 
       <PointsCard u={u} course={course} uid={s.id} p={sp.p} base={`/oquvchi/${s.id}`} />
 

@@ -19,7 +19,7 @@ const TABLES = ["platforms", "users", "courses", "groups", "invites", "lessons",
   "attendance", "bonuses", "messages", "video_progress", "notifications", "workshops", "ws_members", "ws_votes",
   "net_rounds", "net_pairs", "net_proofs"];
 const from = process.env.COPY_FROM_URL;
-if (from && from !== url) {
+if (from && /^postgres/.test(from) && from !== url) {
   const [{ n }] = await sql`select count(*)::int as n from platforms`;
   if (n === 0) {
     const old = postgres(from, { max: 1, onnotice: () => {} });

@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { currentCourse, getTasks, taskState, type Lesson, type Sub } from "@/lib/course";
+import { currentCourse, getTasks, scopeStudents, taskState, type Lesson, type Sub, type Task } from "@/lib/course";
+import { lessonProgress, type Att, type Watch } from "@/lib/progress";
 import { studentCtx } from "@/lib/student";
 import { fmtDay, fmtDT, fmtTime, left, safeHtml, utcToLocalInput } from "@/lib/util";
-import { Head, RowLink, StateBadge } from "@/components/ui";
+import { Head, RowLink, StateBadge, Avatar } from "@/components/ui";
 import { Video } from "@/components/Video";
 import { ActionForm, Submit } from "@/components/Form";
 import { deleteLesson, saveLesson } from "@/app/actions/admin";
@@ -34,8 +35,12 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
   const started = new Date(l.starts_at) <= new Date();
   const tasks = (await getTasks(course.id)).filter((t) => t.lesson_id === l.id);
   const subs = isStudent ? await sql<Sub[]>`select * from submissions where user_id = ${u.id} and task_id = any(${tasks.map((t) => t.id)})` : [];
-  const [vp] = isStudent ? await sql<{ position: number; done: boolean }[]>`select position, done from video_progress where user_id = ${u.id} and lesson_id = ${l.id}` : [];
-  const [att] = isStudent ? await sql<{ status: string; late_min: number }[]>`select status, late_min from attendance where user_id = ${u.id} and lesson_id = ${l.id}` : [];
+  const [vp] = isStudent ? await sql<(Watch & { position: number })[]>`select lesson_id, position, done, max_pos, duration from video_progress where user_id = ${u.id} and lesson_id = ${l.id}` : [];
+  const [att] = isStudent ? await sql<Att[]>`select lesson_id, status, late_min from attendance where user_id = ${u.id} and lesson_id = ${l.id}` : [];
+  const [me] = isStudent ? await sql<{ created_at: Date }[]>`select created_at from users where id = ${u.id}` : [];
+  const prog = isStudent ? lessonProgress(l, course, tasks, subs, att, vp, new Date(me?.created_at ?? 0)) : null;
+  // Xodim uchun: shu darsni kim yopdi, kim qayerda qoldi
+  const staffRows = !isStudent && started ? await lessonStaff(u, course, l, tasks) : [];
   const stats = !isStudent
     ? await sql<{ watched: number; came: number }[]>`
         select (select count(*)::int from video_progress where lesson_id = ${l.id} and (done or max_pos > 60)) as watched,
@@ -61,18 +66,30 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
             started && <div className="card tight sub small">Dars yozuvi hali joylanmagan.</div>
           )}
 
-          {isStudent && l.attendance && started && (
-            <div className="card tight row between">
-              <span className="sub small">Davomat</span>
-              {att ? (
-                <span className={`pill ${att.status === "ontime" ? "ok" : att.status === "excused" ? "info" : att.status === "late" ? "warn" : "bad"}`}>
-                  {att.status === "ontime" ? "Vaqtida" : att.status === "late" ? `${att.late_min} daq kechikdi` : att.status === "excused" ? "Sababli" : "Kelmadi"}
+          {prog && prog.items.length > 0 && (
+            <div className="card">
+              <div className="row between">
+                <h2 className="h2">Darsni yopish shartlari</h2>
+                <span className={`pill ${prog.st === "done" ? "ok" : prog.st === "debt" ? "bad" : prog.st === "review" ? "warn" : "info"}`}>
+                  {prog.st === "done" ? "Yopilgan ✓" : prog.st === "debt" ? "Qarz bor" : prog.st === "review" ? "Tekshirilmoqda" : "Davom etmoqda"}
                 </span>
-              ) : new Date(l.starts_at).getTime() + course.points.window_after_min * 60000 > Date.now() ? (
-                <Link href="/davomat" className="btn sm">Belgilash</Link>
-              ) : (
-                <span className="pill bad">Belgilanmagan</span>
-              )}
+              </div>
+              <div>
+                {prog.items.map((i) => {
+                  const inner = (
+                    <>
+                      <span className="ic">{i.st === "done" ? "✓" : i.st === "late" ? "!" : i.st === "review" ? "…" : ""}</span>
+                      <div className="grow"><div className="t">{i.label}</div><div className="n">{i.note}</div></div>
+                      {i.st === "todo" || i.st === "late" ? <span className="btn sm soft">{i.key === "att" ? "Belgilash" : i.key === "vid" ? "Ko'rish" : "Yuborish"}</span> : i.pts ? <span className="tiny muted">{i.pts} ball</span> : null}
+                    </>
+                  );
+                  return i.href && i.key !== "vid" ? (
+                    <Link key={i.key} href={i.href} className={`req ${i.st}`}>{inner}</Link>
+                  ) : (
+                    <div key={i.key} className={`req ${i.st}`}>{inner}</div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -80,6 +97,25 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
             <div className="grid2">
               <Link href={`/davomat?l=${l.id}`} className="card tight"><span className="tiny muted">Darsga keldi</span><span className="big">{stats[0]?.came ?? 0}</span></Link>
               <div className="card tight"><span className="tiny muted">Yozuvni ko&apos;rdi</span><span className="big">{stats[0]?.watched ?? 0}</span></div>
+            </div>
+          )}
+
+          {staffRows.length > 0 && (
+            <div className="card">
+              <div className="row between">
+                <h2 className="h2">Kim yopdi</h2>
+                <span className="tiny muted">{staffRows.filter((r) => r.st === "done").length}/{staffRows.length}</span>
+              </div>
+              <div className="list">
+                {staffRows.filter((r) => r.st !== "done").map((r) => (
+                  <RowLink key={r.id} href={`/oquvchi/${r.id}`}>
+                    <Avatar name={r.name} size={30} />
+                    <div className="grow"><div className="small trunc" style={{ fontWeight: 600 }}>{r.name}</div><div className="tiny muted">{r.missing || r.group_name}</div></div>
+                    <span className={`pill ${r.st === "debt" ? "bad" : r.st === "review" ? "warn" : "info"}`}>{r.st === "debt" ? "Qarz" : r.st === "review" ? "Tekshiruvda" : "Jarayonda"}</span>
+                  </RowLink>
+                ))}
+                {staffRows.every((r) => r.st === "done") && <div className="empty">Hamma bu darsni yopgan 🎉</div>}
+              </div>
             </div>
           )}
 
@@ -106,7 +142,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
         </>
       )}
 
-      {(tasks.length > 0 || u.role === "admin") && (
+      {!isStudent && (tasks.length > 0 || u.role === "admin") && (
         <div className="card">
           <div className="row between">
             <h2 className="h2">Vazifalar</h2>
@@ -171,3 +207,20 @@ function LessonForm({ l, tz, n }: { l?: Lesson; tz: string; n?: number }) {
     </ActionForm>
   );
 }
+
+async function lessonStaff(u: Parameters<typeof scopeStudents>[0], course: NonNullable<Awaited<ReturnType<typeof currentCourse>>>, l: Lesson, tasks: Task[]) {
+  const students = await scopeStudents(u, course.id);
+  const ids = students.map((s) => s.id);
+  const [subs, att, watch] = await Promise.all([
+    sql<Sub[]>`select * from submissions where user_id = any(${ids}) and task_id = any(${tasks.map((t) => t.id)})`,
+    sql<(Att & { user_id: number })[]>`select user_id, lesson_id, status, late_min from attendance where lesson_id = ${l.id} and user_id = any(${ids})`,
+    sql<(Watch & { user_id: number })[]>`select user_id, lesson_id, done, max_pos, duration from video_progress where lesson_id = ${l.id} and user_id = any(${ids})`,
+  ]);
+  return students.map((s) => {
+    const p = lessonProgress(l, course, tasks, subs.filter((x) => x.user_id === s.id),
+      att.find((a) => a.user_id === s.id), watch.find((w) => w.user_id === s.id), new Date(s.created_at));
+    const missing = p.items.filter((i) => i.key !== "vid" && (i.st === "late" || i.st === "todo")).map((i) => i.label).join(", ");
+    return { ...s, st: p.st, missing };
+  }).sort((a, b) => (a.st === "debt" ? 0 : 1) - (b.st === "debt" ? 0 : 1));
+}
+

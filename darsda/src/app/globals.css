@@ -235,3 +235,54 @@ details > summary::-webkit-details-marker { display: none; }
 .themeseg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .themeseg button { border: 1px solid var(--line); background: var(--sunk); color: var(--ink); border-radius: 12px; padding: 9px 6px; font-weight: 600; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .themeseg button.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-ink); }
+
+/* Yo'l xaritasi */
+.road { display: block; overflow: visible; }
+.road-trail { fill: none; stroke: var(--line); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 2 9; }
+.road-trail.on { stroke: var(--brand); stroke-dasharray: none; opacity: 0.55; }
+.rn { cursor: pointer; }
+.rn-dot { fill: var(--sunk); stroke: var(--line); stroke-width: 2; }
+.rn-g { font-size: 14px; font-weight: 700; text-anchor: middle; fill: var(--ink-2); }
+.rn-lock { fill: none; stroke: var(--ink-3); stroke-width: 1.8; stroke-linejoin: round; }
+.rn-l { font-size: 10.5px; font-weight: 600; fill: var(--ink-3); }
+.rn-t { font-size: 12px; font-weight: 600; fill: var(--ink); }
+.rn-here { font-size: 10.5px; font-weight: 700; fill: var(--brand-ink); }
+.rn.done .rn-dot { fill: var(--ok); stroke: var(--ok); } .rn.done .rn-g { fill: #fff; }
+.rn.review .rn-dot { fill: var(--amber-soft); stroke: var(--amber); } .rn.review .rn-g { fill: var(--amber); }
+.rn.current .rn-dot { fill: var(--brand-soft); stroke: var(--brand); } .rn.current .rn-g { fill: var(--brand-ink); }
+.rn.debt .rn-dot { fill: var(--red-soft); stroke: var(--red); } .rn.debt .rn-g { fill: var(--red); }
+.rn.locked .rn-t { fill: var(--ink-3); }
+.rn-ring { fill: none; stroke: var(--brand); stroke-width: 2; opacity: 0.35; }
+@media (prefers-reduced-motion: no-preference) {
+  .rn-ring { transform-box: fill-box; transform-origin: center; animation: ring 1.8s ease-out infinite; }
+}
+@keyframes ring { from { transform: scale(0.8); opacity: 0.6; } to { transform: scale(1.25); opacity: 0; } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.lg { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 2px solid; }
+.lg.done { background: var(--ok); border-color: var(--ok); }
+.lg.review { background: var(--amber-soft); border-color: var(--amber); }
+.lg.current { background: var(--brand-soft); border-color: var(--brand); }
+.lg.debt { background: var(--red-soft); border-color: var(--red); }
+.lg.locked { background: var(--sunk); border-color: var(--line); }
+
+/* Darsni yopish shartlari */
+.req { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.req:first-of-type { border-top: 0; }
+.req .ic { width: 26px; height: 26px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid var(--line); color: var(--ink-3); }
+.req.done .ic { background: var(--ok); border-color: var(--ok); color: #fff; }
+.req.review .ic { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+.req.late .ic { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+.req.na { opacity: 0.55; }
+.req .t { font-weight: 600; font-size: 13.5px; }
+.req .n { font-size: 11.5px; color: var(--ink-3); }
+.req.late .n { color: var(--red); }
+
+/* Jurnal (o'quvchi × dars) */
+.jr { overflow-x: auto; margin: 0 -14px; padding: 0 14px; }
+.jr table { border-collapse: separate; border-spacing: 3px; font-size: 11.5px; }
+.jr th { font-weight: 600; color: var(--ink-3); text-align: center; padding: 2px; }
+.jr td.nm { white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; font-weight: 600; position: sticky; left: 0; background: var(--card); }
+.jr td.c { width: 22px; height: 22px; border-radius: 6px; background: var(--sunk); }
+.jr td.c.done { background: var(--ok); } .jr td.c.review { background: var(--amber); } .jr td.c.debt { background: var(--red); } .jr td.c.current { background: var(--brand-soft); box-shadow: inset 0 0 0 2px var(--brand); }
+.jr td.stop { white-space: nowrap; padding-left: 8px; color: var(--ink-2); }

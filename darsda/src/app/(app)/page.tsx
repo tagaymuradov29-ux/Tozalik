@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { requireUser, type User } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { attWindow, currentCourse, debts, getLessons, getTasks, pointsAll, scopeStudents, taskOpen, taskState } from "@/lib/course";
-import { nextLesson, ranking, studentCtx } from "@/lib/student";
-import { fmtDay, fmtDT, fmtTime, left } from "@/lib/util";
-import { Head, Progress, RowLink, StateBadge, Avatar } from "@/components/ui";
-import { IBell, IPlay, IQr } from "@/components/icons";
+import { currentCourse, getLessons, getTasks, pointsAll, scopeStudents } from "@/lib/course";
+import { nextLesson, ranking, road, studentCtx } from "@/lib/student";
+import { Roadmap, RoadLegend } from "@/components/Roadmap";
+import { journal } from "@/lib/progress";
+import { fmtDay, fmtTime } from "@/lib/util";
+import { Head, Progress, RowLink, Avatar } from "@/components/ui";
+import { IBell, IQr } from "@/components/icons";
 import { ThemeToggle } from "@/components/Theme";
 
 export default async function Home() {
@@ -37,98 +39,82 @@ function NoCourse({ u }: { u: User }) {
 async function StudentHome({ u }: { u: User }) {
   const ctx = await studentCtx(u);
   if (!ctx) return <NoCourse u={u} />;
-  const { course, lessons, tasks, subs, att } = ctx;
-  const rank = await ranking(course, u.group_id);
+  const { course, lessons } = ctx;
+  const [rank, R] = [await ranking(course, u.group_id), road(ctx)];
   const me = rank.find((r) => r.id === u.id);
-  const next = nextLesson(lessons);
-  const open = tasks
-    .filter((t) => taskOpen(t) && t.kind !== "repeat")
-    .map((t) => ({ t, s: taskState(t, subs) }))
-    .filter((x) => ["todo", "rejected", "late"].includes(x.s))
-    .sort((a, b) => +new Date(a.t.due_at ?? 8.64e15) - +new Date(b.t.due_at ?? 8.64e15));
-  const debt = debts(tasks, subs).length;
   const goal = course.points.goals.find((g) => (me?.total ?? 0) < g.pts) ?? course.points.goals.at(-1);
-  const win = next ? attWindow(next, course) : null;
-  const canCheck = next && win && new Date() >= win.from && new Date() <= win.to && next.attendance && !att.some((a) => a.lesson_id === next.id);
+  const hl = lessons[R.here];
+  const hp = R.prog[R.here];
+  // Keyingi qadam: avval qarz, keyin bajarilmagan shart
+  const nextItem = hp?.items.find((i) => i.st === "late" && i.href) ?? hp?.items.find((i) => i.st === "todo" && i.href);
   const first = u.name.split(" ")[0];
+  const HERE_TXT: Record<string, string> = { debt: "Qarz bor", current: "Davom etmoqda", review: "Tekshirilmoqda", done: "Yopilgan", locked: "Tez orada" };
 
   return (
     <main className="page">
       <Head title={`Salom, ${first}`} right={<Bell />} sub={course.title} />
 
-      <div className="card">
+      <div className="card tight">
         <div className="row between">
-          <div>
-            <div className="sub small">Jami ballingiz</div>
-            <div className="big">{me?.total ?? 0}</div>
+          <div className="stack" style={{ gap: 0 }}>
+            <span className="tiny muted">Jami ball</span>
+            <span className="big">{me?.total ?? 0}</span>
           </div>
-          <Link href="/natijalar" className="stat" style={{ alignItems: "center", minWidth: 92 }}>
+          <Link href="/natijalar" className="stack" style={{ gap: 0, alignItems: "center" }}>
             <span className="tiny muted">Guruhda</span>
-            <b>{me?.rank ?? "—"}-o&apos;rin</b>
-            <span className="tiny muted">{rank.length} kishidan</span>
+            <b style={{ fontSize: 18 }}>{me?.rank ?? "—"}-o&apos;rin</b>
           </Link>
+          <div className="stack" style={{ gap: 0, alignItems: "flex-end" }}>
+            <span className="tiny muted">Yopilgan darslar</span>
+            <b style={{ fontSize: 18 }}>{R.closed}/{R.opened}</b>
+          </div>
         </div>
         {goal && (
-          <div className="stack" style={{ gap: 6 }}>
+          <>
             <Progress value={((me?.total ?? 0) / goal.pts) * 100} />
             <div className="tiny sub">{goal.label} — {goal.pts} ball{(me?.total ?? 0) < goal.pts ? `, yana ${goal.pts - (me?.total ?? 0)}` : " ✓"}</div>
-          </div>
+          </>
         )}
-        {debt > 0 && <Link href="/darslar" className="pill bad" style={{ alignSelf: "flex-start" }}>⚠️ {debt} ta qarz vazifa</Link>}
       </div>
 
-      {next && (
-        <div className="card">
+      {hl && (
+        <div className="card" style={{ borderColor: R.states[R.here] === "debt" ? "var(--red)" : undefined }}>
           <div className="row between">
-            <span className="pill ok">{new Date(next.starts_at) <= new Date() ? "Hozir efirda" : "Keyingi dars"}</span>
-            <span className="tiny muted">{fmtDay(next.starts_at, u.tz)}, {fmtTime(next.starts_at, u.tz)}</span>
+            <span className="tiny muted">Hozir qayerdasiz</span>
+            <span className={`pill ${R.states[R.here] === "debt" ? "bad" : R.states[R.here] === "review" ? "warn" : R.states[R.here] === "done" ? "ok" : "info"}`}>{HERE_TXT[R.states[R.here]]}</span>
           </div>
-          <Link href={`/darslar/${next.id}`} className="stack" style={{ gap: 2 }}>
-            <div className="h2">{next.n}-dars. {next.title}</div>
-            {next.speaker && <div className="sub">{next.speaker}</div>}
+          <Link href={`/darslar/${hl.id}`} className="stack" style={{ gap: 2 }}>
+            <div className="h2">{hl.n}-dars. {hl.title}</div>
+            <div className="tiny muted">{fmtDay(hl.starts_at, u.tz)}, {fmtTime(hl.starts_at, u.tz)}{hl.speaker ? ` · ${hl.speaker}` : ""}</div>
           </Link>
-          {canCheck && (
-            <Link href="/davomat" className="btn full"><IQr size={20} /> Davomatni belgilash</Link>
+          {hp && hp.items.length > 0 && (
+            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              {hp.items.map((i) => (
+                <span key={i.key} className={`pill ${i.st === "done" ? "ok" : i.st === "late" ? "bad" : i.st === "review" ? "warn" : ""}`}>
+                  {i.st === "done" ? "✓ " : i.st === "late" ? "! " : ""}{i.label}
+                </span>
+              ))}
+            </div>
           )}
-          {att.find((a) => a.lesson_id === next.id) && <span className="pill ok" style={{ alignSelf: "flex-start" }}>✓ Davomat belgilandi</span>}
+          {nextItem ? (
+            <Link href={nextItem.href!} className="btn full">{nextItem.st === "late" ? "Qarzni yopish" : "Davom etish"}: {nextItem.label}</Link>
+          ) : (
+            <Link href={`/darslar/${hl.id}`} className="btn soft full">Darsni ochish</Link>
+          )}
+          {R.debts > 1 && <div className="tiny" style={{ color: "var(--red)" }}>Yana {R.debts - 1} ta darsda qarz bor — xaritada qizil</div>}
         </div>
       )}
 
       <div className="card">
         <div className="row between">
-          <h2 className="h2">Vazifalar</h2>
-          <Link href="/yuborish" className="tiny" style={{ color: "var(--brand)", fontWeight: 600 }}>Yuborish</Link>
+          <h2 className="h2">Yo&apos;l xaritasi</h2>
+          <span className="tiny muted">{R.closed} ta dars yopilgan</span>
         </div>
-        {open.length ? (
-          <div className="list">
-            {open.slice(0, 6).map(({ t, s }) => (
-              <RowLink key={t.id} href={`/vazifa/${t.id}`}>
-                <div className="grow">
-                  <div className="h3 trunc">{t.title}</div>
-                  <div className="tiny muted">{t.due_at ? `${fmtDT(t.due_at, u.tz)} · ${left(t.due_at)}` : "Muddatsiz"} · {t.max_points} ball</div>
-                </div>
-                <StateBadge s={s} />
-              </RowLink>
-            ))}
-          </div>
-        ) : (
-          <div className="empty" style={{ padding: 12 }}>Hamma vazifa topshirilgan 🎉</div>
-        )}
+        <RoadLegend />
+        <Roadmap lessons={lessons} states={R.states} here={R.here} tz={u.tz} />
       </div>
 
       <Extras u={u} courseId={course.id} />
-
-      {lessons.filter((l) => l.video_url && new Date(l.starts_at) <= new Date()).slice(-1).map((l) => (
-        <Link key={l.id} href={`/darslar/${l.id}`} className="card tight">
-          <div className="row">
-            <span className="num ok"><IPlay size={16} /></span>
-            <div className="grow">
-              <div className="tiny muted">Dars yozuvi</div>
-              <div className="h3 trunc">{l.n}-dars. {l.title}</div>
-            </div>
-          </div>
-        </Link>
-      ))}
     </main>
   );
 }
@@ -165,6 +151,9 @@ async function StaffHome({ u }: { u: User }) {
     .filter((s) => s.debt > 0)
     .sort((a, b) => b.debt - a.debt);
   const top = [...students].sort((a, b) => (pts.get(b.id)?.total ?? 0) - (pts.get(a.id)?.total ?? 0)).slice(0, 5);
+  const J = await journal(course, lessons, tasks, students);
+  const behind = J.rows.filter((r) => r.stop).sort((a, b) => a.stop!.n - b.stop!.n || b.debt - a.debt);
+  const lastStat = J.perLesson.at(-1);
 
   return (
     <main className="page">
@@ -203,21 +192,31 @@ async function StaffHome({ u }: { u: User }) {
         </div>
       )}
 
-      {debtors.length > 0 && (
-        <div className="card">
-          <h2 className="h2">Qarzdorlar</h2>
-          <div className="list">
-            {debtors.slice(0, 6).map((s) => (
-              <RowLink key={s.id} href={`/oquvchi/${s.id}`}>
-                <Avatar name={s.name} size={36} />
-                <div className="grow"><div className="h3 trunc">{s.name}</div><div className="tiny muted">{s.group_name}</div></div>
-                <span className="pill bad">{s.debt} qarz</span>
-              </RowLink>
-            ))}
-          </div>
-          {debtors.length > 6 && <Link href="/guruh?f=qarz" className="tiny" style={{ color: "var(--brand)", fontWeight: 600 }}>Hammasi ({debtors.length})</Link>}
+      <div className="card">
+        <div className="row between">
+          <h2 className="h2">Kim qayerda to&apos;xtagan</h2>
+          <Link href="/jurnal" className="tiny" style={{ color: "var(--brand-ink)", fontWeight: 600 }}>Jurnal →</Link>
         </div>
-      )}
+        <div className="list">
+          {behind.slice(0, 6).map((r) => (
+            <RowLink key={r.id} href={`/oquvchi/${r.id}`}>
+              <Avatar name={r.name} size={32} />
+              <div className="grow">
+                <div className="h3 trunc">{r.name}</div>
+                <div className="tiny muted">{r.group_name}</div>
+              </div>
+              <span className={`pill ${r.debt ? "bad" : "warn"}`}>{r.stop!.n}-dars{r.debt ? ` · ${r.debt} qarz` : ""}</span>
+            </RowLink>
+          ))}
+          {!behind.length && <div className="empty">{students.length ? "Hamma o'quvchi barcha darslarni yopgan 🎉" : "Hali o'quvchi yo'q"}</div>}
+        </div>
+        {lastStat && (
+          <div className="stack" style={{ gap: 4 }}>
+            <div className="row between tiny"><span className="muted">{lastStat.l.n}-darsni yopganlar</span><b>{lastStat.done}/{students.length}</b></div>
+            <Progress value={students.length ? (lastStat.done / students.length) * 100 : 0} />
+          </div>
+        )}
+      </div>
 
       <div className="card">
         <div className="row between"><h2 className="h2">Reyting</h2><Link href="/natijalar" className="tiny" style={{ color: "var(--brand)", fontWeight: 600 }}>To&apos;liq</Link></div>

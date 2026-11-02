@@ -242,3 +242,10 @@ create table if not exists net_proofs (
   created_at timestamptz not null default now()
 );
 create index if not exists net_proofs_user on net_proofs (user_id);
+
+-- Xizmat yozuvlari (masalan, bir martalik sozlash bajarilganmi)
+create table if not exists app_meta (
+  key text primary key,
+  value text not null default '',
+  at timestamptz not null default now()
+);
