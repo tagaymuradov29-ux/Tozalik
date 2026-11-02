@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { createPlatform } from "@/app/actions/super";
-import { logout } from "@/app/actions/auth";
+import { changePassword, logout } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/Form";
 
 export default async function SuperPage() {
@@ -49,6 +49,14 @@ export default async function SuperPage() {
           <Submit>Yaratish</Submit>
         </ActionForm>
       </div>
+      <details className="card">
+        <summary className="row between"><span className="h2">Parolni o&apos;zgartirish</span><span className="pill">ochish</span></summary>
+        <ActionForm action={changePassword} reset>
+          <input className="input" name="old" type="password" placeholder="Eski parol" autoComplete="current-password" required />
+          <input className="input" name="password" type="password" placeholder="Yangi parol" autoComplete="new-password" minLength={6} required />
+          <Submit>O&apos;zgartirish</Submit>
+        </ActionForm>
+      </details>
     </main>
   );
 }

@@ -69,7 +69,7 @@ input, textarea, select { font: inherit; color: inherit; }
   display: flex; flex-direction: column; gap: 12px;
 }
 .card.tight { padding: 14px 16px; gap: 8px; border-radius: 20px; }
-.row { display: flex; align-items: center; gap: 12px; }
+.row { display: flex; flex-direction: row; align-items: center; gap: 12px; }
 .between { justify-content: space-between; }
 .grow { flex: 1; min-width: 0; }
 .stack { display: flex; flex-direction: column; gap: 10px; }
