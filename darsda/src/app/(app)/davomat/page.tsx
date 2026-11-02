@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { attWindow, currentCourse, getLessons, scopeStudents, type Course } from "@/lib/course";
 import { nextLesson } from "@/lib/student";
 import { fmtDay, fmtTime } from "@/lib/util";
-import { Head, Avatar } from "@/components/ui";
+import { Head, Avatar, ActBtn } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/Form";
 import { AttCode } from "@/components/AttCode";
 import { checkIn } from "@/app/actions/student";
@@ -128,13 +128,11 @@ async function StaffAtt({ u, course, lid }: { u: User; course: Course; lid: numb
                   <div className="tiny muted">{s.group_name}</div>
                 </div>
                 {a && <span className={`pill ${ATT[a.status][0]}`}>{ATT[a.status][1]}{a.status === "late" ? ` ${a.late_min}′` : ""}</span>}
-                <form action={markAttendance} className="row" style={{ gap: 4, width: "100%", paddingLeft: 46 }}>
-                  <input type="hidden" name="lesson_id" value={l.id} />
-                  <input type="hidden" name="user_id" value={s.id} />
+                <div className="row" style={{ gap: 4, width: "100%", paddingLeft: 46 }}>
                   {(["ontime", "late", "absent", "excused"] as const).map((k) => (
-                    <button key={k} name="status" value={k} className={`pill ${a?.status === k ? ATT[k][0] : ""}`} style={{ border: 0, padding: "6px 10px" }}>{ATT[k][1]}</button>
+                    <ActBtn key={k} action={markAttendance} fields={{ lesson_id: l.id, user_id: s.id, status: k }} className={`pill ${a?.status === k ? ATT[k][0] : ""}`} style={{ border: 0, padding: "6px 10px" }}>{ATT[k][1]}</ActBtn>
                   ))}
-                </form>
+                </div>
               </div>
             );
           })}

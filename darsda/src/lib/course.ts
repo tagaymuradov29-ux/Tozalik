@@ -91,12 +91,12 @@ export async function scopeStudents(u: User, courseId: number) {
     order by g.name, u.name`;
 }
 
-export type Points = { tasks: number; attend: number; bonus: number; total: number };
+export type Points = { tasks: number; attend: number; bonus: number; net: number; ws: number; total: number };
 
-/** Kursdagi barcha o'quvchilar ballari: vazifalar + davomat + bonus. Saqlanmaydi — har safar hisoblanadi. */
+/** Kursdagi barcha o'quvchilar ballari: vazifalar + davomat + networking + workshop + bonus. Saqlanmaydi — har safar hisoblanadi. */
 export async function pointsAll(c: Course): Promise<Map<number, Points>> {
   const P = c.points;
-  const rows = await sql<{ id: number; tasks: number; attend: number; bonus: number }[]>`
+  const rows = await sql<{ id: number; tasks: number; attend: number; bonus: number; net: number; ws: number }[]>`
     with st as (
       select u.id, u.created_at from users u join groups g on g.id = u.group_id
       where g.course_id = ${c.id} and u.role = 'student' and u.active
@@ -119,11 +119,21 @@ export async function pointsAll(c: Course): Promise<Map<number, Points>> {
              and l.starts_at > st.created_at - interval '1 day'))
       group by st.id
     ),
-    bp as (select user_id, sum(points)::int as p from bonuses group by user_id)
-    select st.id, coalesce(tp.p, 0) as tasks, coalesce(ap.p, 0) as attend, coalesce(bp.p, 0) as bonus
-    from st left join tp on tp.user_id = st.id left join ap on ap.user_id = st.id left join bp on bp.user_id = st.id`;
+    bp as (select user_id, sum(points)::int as p from bonuses group by user_id),
+    np as (
+      select pr.user_id, sum(pr.points)::int as p from net_proofs pr join net_pairs pa on pa.id = pr.pair_id
+      join net_rounds r on r.id = pa.round_id where r.course_id = ${c.id} and pr.status = 'approved' group by pr.user_id
+    ),
+    wp as (
+      select m.user_id, sum(coalesce((w.res ->> m.team::text)::int, 0))::int as p from ws_members m
+      join workshops w on w.id = m.ws_id where w.course_id = ${c.id} and w.phase = 'done' group by m.user_id
+    )
+    select st.id, coalesce(tp.p, 0) as tasks, coalesce(ap.p, 0) as attend, coalesce(bp.p, 0) as bonus,
+      coalesce(np.p, 0) as net, coalesce(wp.p, 0) as ws
+    from st left join tp on tp.user_id = st.id left join ap on ap.user_id = st.id left join bp on bp.user_id = st.id
+      left join np on np.user_id = st.id left join wp on wp.user_id = st.id`;
   const m = new Map<number, Points>();
-  for (const r of rows) m.set(r.id, { tasks: r.tasks, attend: r.attend, bonus: r.bonus, total: r.tasks + r.attend + r.bonus });
+  for (const r of rows) m.set(r.id, { ...r, total: r.tasks + r.attend + r.bonus + r.net + r.ws });
   return m;
 }
 
@@ -251,7 +261,19 @@ export async function timeline(c: Course, uid: number) {
     sql<{ created_at: Date }[]>`select created_at from users where id = ${uid}`,
     getLessons(c.id),
   ]);
-  const ev: { at: Date; pts: number; title: string; kind: "task" | "att" | "bonus" }[] = [
+  const [net, ws] = await Promise.all([
+    sql<{ at: Date; pts: number; title: string }[]>`
+      select pr.created_at as at, pr.points as pts, 'Networking: ' || u.name as title from net_proofs pr
+      join net_pairs pa on pa.id = pr.pair_id join net_rounds r on r.id = pa.round_id
+      join users u on u.id = case when pa.a_id = ${uid} then pa.b_id else pa.a_id end
+      where pr.user_id = ${uid} and r.course_id = ${c.id} and pr.status = 'approved'`,
+    sql<{ at: Date; pts: number; title: string }[]>`
+      select w.created_at as at, (w.res ->> m.team::text)::int as pts, 'Workshop: ' || w.title as title from ws_members m
+      join workshops w on w.id = m.ws_id where m.user_id = ${uid} and w.course_id = ${c.id} and w.phase = 'done'`,
+  ]);
+  const ev: { at: Date; pts: number; title: string; kind: "task" | "att" | "bonus" | "net" | "ws" }[] = [
+    ...net.map((x) => ({ ...x, kind: "net" as const })),
+    ...ws.filter((x) => x.pts).map((x) => ({ ...x, kind: "ws" as const })),
     ...subs.map((s) => ({ ...s, kind: "task" as const })),
     ...bon.map((b) => ({ ...b, kind: "bonus" as const })),
   ];

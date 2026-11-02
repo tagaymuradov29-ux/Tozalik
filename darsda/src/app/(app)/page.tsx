@@ -110,6 +110,8 @@ async function StudentHome({ u }: { u: User }) {
         )}
       </div>
 
+      <Extras u={u} courseId={course.id} />
+
       {lessons.filter((l) => l.video_url && new Date(l.starts_at) <= new Date()).slice(-1).map((l) => (
         <Link key={l.id} href={`/darslar/${l.id}`} className="card tight">
           <div className="row">
@@ -235,7 +237,37 @@ async function StaffHome({ u }: { u: User }) {
           ))}
         </div>
       </div>
+      <Extras u={u} courseId={course.id} />
       <Link href="/profil" className="btn ghost full">Profil va sozlamalar</Link>
     </main>
   );
 }
+
+/** Networking va Workshop kirish kartalari (hozirgi holati bilan) */
+async function Extras({ u, courseId }: { u: User; courseId: number }) {
+  const [[ws], [net]] = await Promise.all([
+    sql<{ id: number; title: string; phase: string }[]>`
+      select id, title, phase from workshops where course_id = ${courseId} order by (phase = 'done'), created_at desc limit 1`,
+    sql<{ total: number; ok: number }[]>`
+      select count(*)::int as total, count(*) filter (where exists (select 1 from net_proofs x where x.pair_id = pa.id and x.user_id = ${u.id} and x.status = 'approved'))::int as ok
+      from net_pairs pa join net_rounds r on r.id = pa.round_id
+      where r.course_id = ${courseId} and (pa.a_id = ${u.id} or pa.b_id = ${u.id})
+        and r.starts_at + (pa.week - 1) * interval '7 days' <= now()`,
+  ]);
+  const wsTxt = !ws ? "Hali yo'q" : ws.phase === "join" ? "Jamoaga yozilish ochiq" : ws.phase === "vote" ? "Baholash ketmoqda" : "Natijalar";
+  return (
+    <div className="grid2">
+      <Link href="/networking" className="card tight">
+        <span style={{ fontSize: 22 }}>🤝</span>
+        <span className="h3">Networking</span>
+        <span className="tiny muted">{u.role === "student" ? (net?.total ? `${net.ok}/${net.total} tanishuv` : "Tez orada") : "Juftliklar va isbotlar"}</span>
+      </Link>
+      <Link href={ws ? `/workshop/${ws.id}` : "/workshop"} className="card tight">
+        <span style={{ fontSize: 22 }}>🏆</span>
+        <span className="h3">Workshop</span>
+        <span className="tiny muted" style={ws && ws.phase !== "done" ? { color: "var(--brand)", fontWeight: 600 } : undefined}>{wsTxt}</span>
+      </Link>
+    </div>
+  );
+}
+

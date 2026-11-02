@@ -20,7 +20,9 @@ create table if not exists users (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
-create unique index if not exists users_platform_phone on users (coalesce(platform_id, 0), phone);
+-- Bir raqam bitta platformada har xil rolda bo'lishi mumkin (test/demo akkauntlar): rolni parol ajratadi
+drop index if exists users_platform_phone;
+create unique index if not exists users_platform_phone_role on users (coalesce(platform_id, 0), phone, role);
 
 create table if not exists courses (
   id serial primary key,
@@ -181,3 +183,62 @@ create table if not exists notifications (
   created_at timestamptz not null default now()
 );
 create index if not exists notif_user on notifications (user_id, id desc);
+
+-- 🏆 Workshop: jamoalarga bo'linish → taqdimot va baholash (1–10) → natija va ball
+create table if not exists workshops (
+  id serial primary key,
+  course_id int not null references courses(id) on delete cascade,
+  lesson_id int references lessons(id) on delete set null,
+  title text not null,
+  teams int not null default 5,
+  phase text not null default 'join' check (phase in ('join','vote','done')),
+  points jsonb not null default '[50,40,30,20,10]',
+  res jsonb not null default '{}',
+  created_at timestamptz not null default now()
+);
+create table if not exists ws_members (
+  ws_id int not null references workshops(id) on delete cascade,
+  user_id int not null references users(id) on delete cascade,
+  team int not null,
+  primary key (ws_id, user_id)
+);
+create table if not exists ws_votes (
+  ws_id int not null references workshops(id) on delete cascade,
+  voter_id int not null references users(id) on delete cascade,
+  team int not null,
+  score int not null check (score between 1 and 10),
+  primary key (ws_id, voter_id, team)
+);
+
+-- 🤝 Networking: har hafta yangi juftliklar (round-robin), isbot (2 ta rasm) → kurator tasdiqlaydi → ball
+create table if not exists net_rounds (
+  id serial primary key,
+  course_id int not null references courses(id) on delete cascade,
+  title text not null,
+  starts_at timestamptz not null,
+  weeks int not null,
+  per_week int not null,
+  points int not null default 5,
+  created_at timestamptz not null default now()
+);
+create table if not exists net_pairs (
+  id serial primary key,
+  round_id int not null references net_rounds(id) on delete cascade,
+  week int not null,
+  a_id int not null references users(id) on delete cascade,
+  b_id int not null references users(id) on delete cascade
+);
+create index if not exists net_pairs_round on net_pairs (round_id, week);
+create table if not exists net_proofs (
+  id serial primary key,
+  pair_id int not null references net_pairs(id) on delete cascade,
+  user_id int not null references users(id) on delete cascade,
+  files jsonb not null default '[]',
+  text text not null default '',
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  points int,
+  feedback text not null default '',
+  reviewed_by int references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists net_proofs_user on net_proofs (user_id);

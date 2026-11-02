@@ -1,11 +1,12 @@
 import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { createPlatform, enterPlatform } from "@/app/actions/super";
+import { createPlatform, enterPlatform, testAccounts } from "@/app/actions/super";
 import { changePassword, logout } from "@/app/actions/auth";
 import { ActionForm, Submit } from "@/components/Form";
 
-export default async function SuperPage() {
-  await requireUser(["super"]);
+export default async function SuperPage({ searchParams }: { searchParams: Promise<{ test?: string }> }) {
+  const me = await requireUser(["super"]);
+  const testPid = Number((await searchParams).test || 0);
   const rows = await sql<{ id: number; name: string; slug: string; color: string; students: number; staff: number; courses: number; admins: string | null }[]>`
     select p.id, p.name, p.slug, p.color,
       (select count(*)::int from users u where u.platform_id = p.id and u.role = 'student') as students,
@@ -31,10 +32,22 @@ export default async function SuperPage() {
             </div>
           </div>
           {p.admins && <div className="tiny sub">Admin: {p.admins}</div>}
-          <form action={enterPlatform}>
-            <input type="hidden" name="id" value={p.id} />
-            <button className="btn sm soft full">Kirish →</button>
-          </form>
+          <div className="grid2">
+            <form action={enterPlatform}>
+              <input type="hidden" name="id" value={p.id} />
+              <button className="btn sm soft full">Kirish →</button>
+            </form>
+            <form action={testAccounts}>
+              <input type="hidden" name="id" value={p.id} />
+              <Submit className="btn sm ghost full" confirm={`«${p.name}» da sizning raqamingiz bilan test akkauntlar yaratiladi (parollar: admin / kurator / student), super admin paroli «super» bo'ladi. Davom etasizmi?`}>🧪 Test akkauntlar</Submit>
+            </form>
+          </div>
+          {testPid === p.id && (
+            <div className="okmsg small">
+              Tayyor! Kirish: telefon <b>+{me.phone}</b><br />
+              Parollar: <b>super</b> — super admin · <b>admin</b> — admin · <b>kurator</b> — kurator · <b>student</b> — o&apos;quvchi
+            </div>
+          )}
         </div>
       ))}
       {!rows.length && <div className="card empty">Hali platforma yo&apos;q. Birinchisini quyida yarating.</div>}

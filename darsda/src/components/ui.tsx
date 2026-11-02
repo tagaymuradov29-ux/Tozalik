@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { IBack, IChevron } from "./icons";
 import { initials } from "@/lib/util";
+import { Submit } from "./Form";
 import type { TaskState } from "@/lib/course";
 
 export function Head({ title, back, right, sub }: { title: string; back?: string; right?: React.ReactNode; sub?: React.ReactNode }) {
@@ -51,4 +52,23 @@ export function StateBadge({ s }: { s: TaskState }) {
 
 export function Progress({ value }: { value: number }) {
   return <div className="progress"><i style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>;
+}
+
+/** Bitta tugmali forma: qiymatlar yashirin maydonlarda (tugmaning name/value'siga bog'liq emas) */
+export function ActBtn({
+  action, fields, className, style, children, confirm,
+}: {
+  action: (fd: FormData) => Promise<void>;
+  fields: Record<string, string | number>;
+  className?: string;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+  confirm?: string;
+}) {
+  return (
+    <form action={action} style={{ display: "contents" }}>
+      {Object.entries(fields).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+      <Submit className={className} style={style} confirm={confirm}>{children}</Submit>
+    </form>
+  );
 }

@@ -8,6 +8,8 @@ import { Head, Avatar } from "@/components/ui";
 import { Files } from "@/components/Files";
 import { ActionForm, Submit } from "@/components/Form";
 import { gradeSubmission, reopenSubmission } from "@/app/actions/staff";
+import { reviewProof } from "@/app/actions/net";
+import type { User } from "@/lib/auth";
 
 type Row = {
   id: number; text: string; link: string; files: { id: string; name: string; type: string; size: number }[];
@@ -22,6 +24,7 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
   if (u.role === "student") redirect("/");
   const course = await currentCourse(u);
   if (!course) return <main className="page"><Head title="Tekshirish" /><div className="card empty">Kurs yo&apos;q</div></main>;
+  if (sp.v === "net") return <NetReview u={u} courseId={course.id} />;
   const done = sp.v === "done";
   const tid = Number(sp.t || 0);
   const gid = Number(sp.g || 0);
@@ -45,10 +48,7 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
   return (
     <main className="page">
       <Head title="Tekshirish" />
-      <div className="seg">
-        <Link href="/tekshirish" className={!done ? "on" : ""}>Kutmoqda</Link>
-        <Link href="/tekshirish?v=done" className={done ? "on" : ""}>Tekshirilgan</Link>
-      </div>
+      <Tabs v={done ? "done" : ""} />
       {byTask.length > 1 && (
         <div className="row" style={{ gap: 6, overflowX: "auto", paddingBottom: 2 }}>
           <Link href="/tekshirish" className={`pill ${!tid ? "ok" : ""}`}>Hammasi</Link>
@@ -107,3 +107,53 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
     </main>
   );
 }
+
+function Tabs({ v }: { v: string }) {
+  return (
+    <div className="seg">
+      <Link href="/tekshirish" className={!v ? "on" : ""}>Kutmoqda</Link>
+      <Link href="/tekshirish?v=net" className={v === "net" ? "on" : ""}>Networking</Link>
+      <Link href="/tekshirish?v=done" className={v === "done" ? "on" : ""}>Tekshirilgan</Link>
+    </div>
+  );
+}
+
+/** 🤝 Networking isbotlari: 2 ta rasm → tasdiqlash (+ball) yoki sabab bilan qaytarish */
+async function NetReview({ u, courseId }: { u: User; courseId: number }) {
+  const rows = await sql<{ id: number; files: Row["files"]; text: string; created_at: Date; user_id: number; name: string; group_name: string; partner: string; week: number; points: number }[]>`
+    select pr.id, pr.files, pr.text, pr.created_at, su.id as user_id, su.name, g.name as group_name, pu.name as partner, pa.week, r.points
+    from net_proofs pr join net_pairs pa on pa.id = pr.pair_id join net_rounds r on r.id = pa.round_id
+    join users su on su.id = pr.user_id join groups g on g.id = su.group_id
+    join users pu on pu.id = case when pa.a_id = pr.user_id then pa.b_id else pa.a_id end
+    where r.course_id = ${courseId} and pr.status = 'pending' and (${u.role === "admin"} or g.curator_id = ${u.id})
+    order by pr.created_at limit 60`;
+  return (
+    <main className="page">
+      <Head title="Tekshirish" />
+      <Tabs v="net" />
+      {rows.map((r) => (
+        <div key={r.id} className="card">
+          <div className="row">
+            <Avatar name={r.name} />
+            <div className="grow">
+              <div className="h3 trunc">{r.name} 🤝 {r.partner}</div>
+              <div className="tiny muted">{r.group_name} · {r.week}-hafta · {fmtDT(r.created_at, u.tz)}</div>
+            </div>
+          </div>
+          <Files files={r.files} />
+          {r.text && <div className="small">{r.text}</div>}
+          <ActionForm action={reviewProof}>
+            <input type="hidden" name="id" value={r.id} />
+            <textarea className="input" name="feedback" rows={2} placeholder="Izoh (qaytarishda — majburiy: masalan, «ikkovingiz ko'rinmayapti»)" style={{ minHeight: 60 }} />
+            <div className="grid2">
+              <Submit name="decision" value="reject" className="btn danger">Qaytarish</Submit>
+              <Submit name="decision" value="approve" className="btn">+{r.points} Tasdiqlash</Submit>
+            </div>
+          </ActionForm>
+        </div>
+      ))}
+      {!rows.length && <div className="card empty">Networking isbotlari tekshirilgan 🎉</div>}
+    </main>
+  );
+}
+

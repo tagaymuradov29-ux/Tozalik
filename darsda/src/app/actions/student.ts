@@ -1,7 +1,7 @@
 "use server";
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
+import { storeFiles } from "@/lib/files";
 import { requireUser } from "@/lib/auth";
 import {
   attStatusFor, attWindow, checkAttCode, currentCourse, getLessons, repeatUsage, taskOpen,
@@ -9,8 +9,6 @@ import {
 } from "@/lib/course";
 import type { FormState } from "./auth";
 
-const MAX_FILE = 4 * 1024 * 1024;
-const MAX_TOTAL = 4.3 * 1024 * 1024;
 
 async function loadTask(taskId: number) {
   const u = await requireUser(["student"]);
@@ -29,8 +27,6 @@ export async function submitTask(_: FormState, fd: FormData): Promise<FormState>
   const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   if (!text && !link && !files.length) return { error: "Matn, havola yoki fayl qo'shing" };
   if (link && !/^https?:\/\/\S+$/i.test(link)) return { error: "Havola http:// yoki https:// bilan boshlanishi kerak" };
-  if (files.some((f) => f.size > MAX_FILE)) return { error: "Har bir fayl 4 MB dan oshmasin" };
-  if (files.reduce((s, f) => s + f.size, 0) > MAX_TOTAL) return { error: "Fayllar jami 4 MB dan oshmasin — kamroq yuboring" };
 
   const subs = await sql<Sub[]>`select * from submissions where task_id = ${t.id} and user_id = ${u.id}`;
   if (t.kind === "repeat") {
@@ -44,22 +40,9 @@ export async function submitTask(_: FormState, fd: FormData): Promise<FormState>
     if (subs.some((s) => s.status === "pending")) return { error: "Oldingi javobingiz tekshirilmoqda" };
   }
 
-  const stored: { id: string; name: string; type: string; size: number }[] = [];
-  for (const f of files) {
-    const buf = Buffer.from(await f.arrayBuffer());
-    const sha = createHash("sha256").update(buf).digest("hex");
-    const [used] = await sql`
-      select 1 from submissions s, jsonb_array_elements(s.files) e
-      join files fl on fl.id = (e->>'id')::uuid
-      where fl.sha256 = ${sha} and fl.platform_id = ${u.platform_id} and s.status <> 'cancelled' and s.status <> 'rejected'
-      limit 1`;
-    if (used) return { error: `«${f.name}» avval boshqa javobda yuborilgan` };
-    const [row] = await sql<{ id: string }[]>`
-      insert into files (platform_id, user_id, name, type, size, sha256, data)
-      values (${u.platform_id}, ${u.id}, ${f.name.slice(0, 120)}, ${f.type || "application/octet-stream"}, ${buf.length}, ${sha}, ${buf})
-      returning id`;
-    stored.push({ id: row.id, name: f.name.slice(0, 120), type: f.type, size: buf.length });
-  }
+  const saved = await storeFiles(u, files);
+  if ("error" in saved) return { error: saved.error };
+  const stored = saved.stored;
 
   const late = !!t.due_at && new Date(t.due_at) < new Date();
   const auto = !t.review;

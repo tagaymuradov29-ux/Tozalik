@@ -60,7 +60,7 @@ async function Rating({ u, course, sp }: { u: User; course: Course; sp: SP }) {
                 <span className={`num ${x.rank <= 3 ? "ok" : ""}`}>{x.rank}</span>
                 <div className="grow">
                   <div className="h3 trunc" style={me ? { color: "var(--brand)" } : undefined}>{x.name}{me ? " (siz)" : ""}</div>
-                  <div className="tiny muted">{x.group_name} · vazifa {x.tasks} · davomat {x.attend}{x.bonus ? ` · bonus ${x.bonus}` : ""}</div>
+                  <div className="tiny muted">{x.group_name} · vazifa {x.tasks} · davomat {x.attend}{x.net ? ` · net ${x.net}` : ""}{x.ws ? ` · ws ${x.ws}` : ""}{x.bonus ? ` · bonus ${x.bonus}` : ""}</div>
                 </div>
                 <b>{x.total}</b>
               </>

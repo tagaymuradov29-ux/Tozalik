@@ -70,6 +70,8 @@ export async function PointsCard({ u, course, uid, p, base }: { u: User; course:
       <div className="grid2">
         <div className="stat"><span className="tiny muted">Vazifalar</span><b>{cat("task")}</b></div>
         <div className="stat"><span className="tiny muted">Davomat</span><b>{cat("att")}</b></div>
+        <div className="stat"><span className="tiny muted">Networking</span><b>{cat("net")}</b></div>
+        <div className="stat"><span className="tiny muted">Workshop</span><b>{cat("ws")}</b></div>
         <div className="stat"><span className="tiny muted">Bonus</span><b>{cat("bonus")}</b></div>
         <div className="stat"><span className="tiny muted">Ko&apos;rilgan darslar</span><b>{vp.n}</b></div>
       </div>

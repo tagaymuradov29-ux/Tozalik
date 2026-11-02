@@ -39,12 +39,13 @@ export function ActionForm({
 }
 
 export function Submit({
-  children, className, confirm: ask, name, value,
-}: { children: React.ReactNode; className?: string; confirm?: string; name?: string; value?: string }) {
+  children, className, confirm: ask, name, value, style,
+}: { children: React.ReactNode; className?: string; confirm?: string; name?: string; value?: string; style?: React.CSSProperties }) {
   const pending = useContext(Pending);
   return (
     <button
       className={className ?? "btn full"}
+      style={style}
       disabled={pending}
       name={name}
       value={value}

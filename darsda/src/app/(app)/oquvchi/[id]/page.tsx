@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { attPoints, currentCourse, getLessons, getTasks, taskState, type Sub } from "@/lib/course";
 import { fmtDate } from "@/lib/util";
-import { Head, StateBadge, Avatar } from "@/components/ui";
+import { Head, StateBadge, Avatar, ActBtn } from "@/components/ui";
 import { PointsCard } from "@/components/PointsCard";
 import { ActionForm, Submit } from "@/components/Form";
 import { addBonus, deleteBonus, markAttendance, nudge, toggleActive, updateStudent } from "@/app/actions/staff";
@@ -76,13 +76,11 @@ export default async function Oquvchi({ params, searchParams }: { params: Promis
                   </Link>
                 ))}
                 {l.attendance && (
-                  <form action={markAttendance} className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-                    <input type="hidden" name="lesson_id" value={l.id} />
-                    <input type="hidden" name="user_id" value={s.id} />
+                  <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
                     {(["ontime", "late", "absent", "excused"] as const).map((k) => (
-                      <button key={k} name="status" value={k} className={`pill ${a?.status === k ? ATT[k][0] : ""}`} style={{ border: 0, padding: "7px 11px" }}>{ATT[k][1]}</button>
+                      <ActBtn key={k} action={markAttendance} fields={{ lesson_id: l.id, user_id: s.id, status: k }} className={`pill ${a?.status === k ? ATT[k][0] : ""}`} style={{ border: 0, padding: "7px 11px" }}>{ATT[k][1]}</ActBtn>
                     ))}
-                  </form>
+                  </div>
                 )}
                 {a?.reason && <div className="tiny sub">Sabab: {a.reason}</div>}
               </div>

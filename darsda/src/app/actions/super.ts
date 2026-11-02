@@ -46,3 +46,36 @@ export async function enterPlatform(fd: FormData) {
   await startSession(a.id);
   redirect("/");
 }
+
+/** 🧪 Sinash uchun: super adminning o'z raqami bilan shu platformada admin / kurator / o'quvchi akkauntlari.
+ *  Parollar rolga teng: admin, kurator, student; super adminning o'z paroli — super. Rolni parol ajratadi. */
+export async function testAccounts(fd: FormData) {
+  const me = await requireUser(["super"]);
+  const pid = Number(fd.get("id"));
+  const [p] = await sql<{ id: number }[]>`select id from platforms where id = ${pid}`;
+  if (!p) return;
+  let [c] = await sql<{ id: number }[]>`select id from courses where platform_id = ${pid} order by id limit 1`;
+  if (!c) [c] = await sql<{ id: number }[]>`insert into courses (platform_id, title) values (${pid}, 'Birinchi kurs') returning id`;
+  let [g] = await sql<{ id: number; curator_id: number | null }[]>`select id, curator_id from groups where course_id = ${c.id} order by id limit 1`;
+  if (!g) [g] = await sql<{ id: number; curator_id: number | null }[]>`
+    insert into groups (platform_id, course_id, name) values (${pid}, ${c.id}, '1-guruh') returning id, curator_id`;
+  const upsert = async (role: string, pass: string, name: string, groupId: number | null) => {
+    const hash = bcrypt.hashSync(pass, 10);
+    const [ex] = await sql<{ id: number }[]>`select id from users where platform_id = ${pid} and phone = ${me.phone} and role = ${role}`;
+    if (ex) {
+      await sql`update users set password_hash = ${hash}, active = true, group_id = coalesce(group_id, ${groupId}) where id = ${ex.id}`;
+      return ex.id;
+    }
+    const [n] = await sql<{ id: number }[]>`
+      insert into users (platform_id, phone, password_hash, name, role, group_id)
+      values (${pid}, ${me.phone}, ${hash}, ${name}, ${role}, ${groupId}) returning id`;
+    return n.id;
+  };
+  await upsert("admin", "admin", "Test admin", null);
+  const cur = await upsert("curator", "kurator", "Test kurator", null);
+  await upsert("student", "student", "Test o'quvchi", g.id);
+  if (!g.curator_id) await sql`update groups set curator_id = ${cur} where id = ${g.id}`;
+  await sql`update users set password_hash = ${bcrypt.hashSync("super", 10)} where id = ${me.id}`;
+  revalidatePath("/super");
+  redirect(`/super?test=${pid}`);
+}

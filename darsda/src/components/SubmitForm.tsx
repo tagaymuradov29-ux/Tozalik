@@ -3,7 +3,7 @@ import { useRef, useState, useTransition } from "react";
 import { submitTask } from "@/app/actions/student";
 
 /** Rasmni 1600px gacha kichraytirib JPEG qiladi — yuklash tez va 4 MB limitga sig'adi */
-async function compress(f: File): Promise<File> {
+export async function compress(f: File): Promise<File> {
   if (!f.type.startsWith("image/") || f.type === "image/gif" || f.size < 600 * 1024) return f;
   try {
     const bmp = await createImageBitmap(f);

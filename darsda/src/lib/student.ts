@@ -27,7 +27,7 @@ export async function ranking(course: Course, groupId?: number | null) {
     where g.course_id = ${course.id} and u.role = 'student' and u.active`;
   const list = users
     .filter((x) => !groupId || x.group_id === groupId)
-    .map((x) => ({ ...x, ...(pts.get(x.id) ?? { tasks: 0, attend: 0, bonus: 0, total: 0 }) }))
+    .map((x) => ({ ...x, ...(pts.get(x.id) ?? { tasks: 0, attend: 0, bonus: 0, net: 0, ws: 0, total: 0 }) }))
     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
   return list.map((x, i) => ({ ...x, rank: i + 1 }));
 }
