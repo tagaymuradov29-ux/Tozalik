@@ -7,7 +7,7 @@ export function BrandStyle({ b }: { b: Brand | null }) {
   const font = fontOf(b);
   return (
     <>
-      {font && font !== "Inter" && font !== "Onest" && <link rel="stylesheet" href={fontUrl([font])} />}
+      {font && font !== "Onest" && <link rel="stylesheet" href={fontUrl([font])} />}
       <style dangerouslySetInnerHTML={{ __html: brandCss(b.color, font, !!b.settings?.tint) }} />
     </>
   );

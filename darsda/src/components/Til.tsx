@@ -17,6 +17,7 @@ function Say({ text, lang, size = 20 }: { text: string; lang: string; size?: num
  *  dir="rev" — o'zbekchadan chet tiliga. */
 export function Flashcards({ cards, lang, rtl, back, dir = "fwd" }: { cards: Card[]; lang: string; rtl?: boolean; back: string; dir?: "fwd" | "rev" }) {
   const [q, setQ] = useState(cards);
+  const total = cards.length;
   const [open, setOpen] = useState(false);
   const [ok, setOk] = useState(0);
   const [bad, setBad] = useState(0);
@@ -52,7 +53,10 @@ export function Flashcards({ cards, lang, rtl, back, dir = "fwd" }: { cards: Car
   const hint = dx > 40 ? "Bildim ✓" : dx < -40 ? "Bilmadim" : dy < -40 ? "Juda oson ↑" : "";
   return (
     <>
-      <div className="tiny muted" style={{ textAlign: "center" }}>Qoldi: {q.length} ta · ✅ {ok}</div>
+      <div className="stack" style={{ gap: 8 }}>
+        <div className="row between small"><b>{Math.min(total, total - q.length + 1)} / {total}</b><span className="muted">✅ {ok} · 🔁 {bad}</span></div>
+        <div className="progress"><i style={{ width: `${((total - q.length) / Math.max(1, total)) * 100}%` }} /></div>
+      </div>
       <div role="button" tabIndex={0} className="card flash"
         style={{ transform: `translate(${dx}px, ${dy}px) rotate(${dx / 18}deg)`, transition: drag && !exit ? "none" : "transform .23s ease", touchAction: "none", userSelect: "none",
           boxShadow: hint ? `0 0 0 3px ${dx > 40 || dy < -40 ? "var(--ok)" : "var(--red)"}` : undefined }}
@@ -74,15 +78,15 @@ export function Flashcards({ cards, lang, rtl, back, dir = "fwd" }: { cards: Car
         </div>
         {c.image && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.image} alt="" style={{ width: 120, height: 90, objectFit: "cover", borderRadius: 12 }} draggable={false} />
+          <img src={c.image} alt="" style={{ width: 140, height: 110, objectFit: "cover", borderRadius: 20, background: "#FFF6D6" }} draggable={false} />
         )}
         {front}
         {open && <><div style={{ height: 1, background: "var(--line)", width: "100%" }} />{backSide}</>}
       </div>
-      <div className="tiny muted" style={{ textAlign: "center" }}>← chapga: bilmadim · o&apos;ngga: bildim → · ↑ tepaga: juda oson</div>
-      <div className="grid2">
-        <button type="button" className="btn danger" onClick={() => answer("l")}>🔁 Bilmadim</button>
-        <button type="button" className="btn" onClick={() => answer("r")}>✅ Bildim</button>
+      <div className="swipe3">
+        <button type="button" className="no" onClick={() => answer("l")}><span aria-hidden="true">←</span>Bilmadim</button>
+        <button type="button" className="easy" onClick={() => answer("u")}><span aria-hidden="true">↑</span>Juda oson</button>
+        <button type="button" className="yes" onClick={() => answer("r")}><span aria-hidden="true">→</span>Bildim</button>
       </div>
     </>
   );

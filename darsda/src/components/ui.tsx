@@ -72,3 +72,18 @@ export function ActBtn({
     </form>
   );
 }
+
+const TILE = ["var(--brand)", "#0F766E", "#B45309", "#DB2777", "#2563EB", "#7C3AED"];
+/** Kurs tanlash kartasi: rangli kvadrat (qisqartma), nom, izoh va rol belgisi */
+export function CourseTile({ title, sub, code, i, current, role }: { title: string; sub?: string; code: string; i: number; current?: boolean; role?: string }) {
+  return (
+    <span className={`pick${current ? " on" : ""}`}>
+      <span className="pick-ic" style={{ background: current ? "var(--brand)" : TILE[i % TILE.length] }}>{code}</span>
+      <span className="grow stack" style={{ gap: 3, minWidth: 0 }}>
+        <b className="trunc" style={{ fontSize: 16 }}>{title}</b>
+        {sub && <span className="small muted trunc">{sub}</span>}
+      </span>
+      {role && <span className={`pill ${role === "Kurator" ? "teal" : role === "O'quvchi" ? "info" : role === "Hozir" ? "ok" : "warn"}`}>{role}</span>}
+    </span>
+  );
+}

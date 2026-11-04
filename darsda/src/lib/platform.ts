@@ -53,13 +53,13 @@ export const okColor = (c: string | null | undefined) => (c && /^#[0-9a-f]{6}$/i
 export function brandCss(color: string, font = "", tint = false) {
   const c = okColor(color);
   const f = font ? `:root:root:root { --font: "${font.replace(/[^a-zA-Z ]/g, "")}", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }` : "";
-  const bgL = tint ? `--bg: color-mix(in srgb, ${c} 6%, #f4f6f9);` : "";
-  const bgD = tint ? `--bg: color-mix(in srgb, ${c} 10%, #0d1220);` : "";
+  const bgL = tint ? `--bg: color-mix(in srgb, ${c} 6%, #F3F4F8);` : "";
+  const bgD = tint ? `--bg: color-mix(in srgb, ${c} 10%, #0E0F1A);` : "";
   const dark = `${bgD} --brand: color-mix(in srgb, ${c} 78%, #fff); --brand-ink: color-mix(in srgb, ${c} 55%, #fff);
-    --brand-soft: color-mix(in srgb, ${c} 24%, #161d2f); --fab: var(--brand); --blue: var(--brand-ink); --blue-soft: var(--brand-soft);`;
-  return `${f} :root { ${bgL} --brand: ${c}; --brand-ink: color-mix(in srgb, ${c} 80%, #000); --brand-soft: color-mix(in srgb, ${c} 11%, #fff);
+    --brand-soft: color-mix(in srgb, ${c} 24%, #181A2B); --fab: var(--brand); --fab-shadow: color-mix(in srgb, ${c} 40%, transparent); --bar: color-mix(in srgb, ${c} 30%, #181A2B); --chart-on: var(--brand); --blue: var(--brand-ink); --blue-soft: var(--brand-soft);`;
+  return `${f} :root { ${bgL} --brand: ${c}; --brand-ink: color-mix(in srgb, ${c} 80%, #000); --brand-soft: color-mix(in srgb, ${c} 9%, #fff);
     --chart-on: ${c}; --blue: var(--brand-ink); --blue-soft: var(--brand-soft);
-    --fab: color-mix(in srgb, ${c} 72%, #000); --fab-shadow: color-mix(in srgb, ${c} 40%, transparent); }
+    --fab: ${c}; --bar: color-mix(in srgb, ${c} 28%, #fff); --fab-shadow: color-mix(in srgb, ${c} 40%, transparent); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { ${dark} } }
   :root[data-theme="dark"] { ${dark} }`;
 }

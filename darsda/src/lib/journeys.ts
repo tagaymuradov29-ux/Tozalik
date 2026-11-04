@@ -47,7 +47,7 @@ export const journey = (key?: string | null) => JOURNEYS.find((j) => j.key === k
 
 /** Eng ko'p ishlatiladigan shriftlar — lotin va kirill harflarini qo'llaydi */
 export const FONTS = [
-  { key: "", name: "Standart (Inter / Onest)", family: "" },
+  { key: "", name: "Standart (Onest)", family: "" },
   { key: "Inter", name: "Inter", family: "Inter" },
   { key: "Onest", name: "Onest", family: "Onest" },
   { key: "Roboto", name: "Roboto", family: "Roboto" },

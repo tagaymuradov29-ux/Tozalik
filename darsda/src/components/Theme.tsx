@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 type Mode = "light" | "dark" | "auto";
-const BG = { light: "#f4f6f9", dark: "#0d1220" };
+const BG = { light: "#F3F4F8", dark: "#0E0F1A" };
 
 function apply(mode: Mode) {
   const root = document.documentElement;

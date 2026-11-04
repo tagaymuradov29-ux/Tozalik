@@ -7,6 +7,7 @@ import { getBrand, MODS, on } from "@/lib/platform";
 import { FONTS, journey } from "@/lib/journeys";
 import { Head, Progress } from "@/components/ui";
 import { CopyLink } from "@/components/Copy";
+import { ICheck } from "@/components/icons";
 
 /** ⚙️ Konstruktor: platformani sotib olgan kurs egasi hammasini shu yerdan o'ziga moslaydi */
 export default async function Sozlash() {
@@ -38,32 +39,36 @@ export default async function Sozlash() {
     { href: "/guruh", emoji: "🔗", t: "O'quvchilarni taklif qilish", d: `${s.students} ta o'quvchi · ${s.invites} ta faol taklif havolasi`, ok: s.students > 0 },
   ];
   const done = steps.filter((x) => x.ok).length;
+  const firstOpen = steps.findIndex((x) => !x.ok);
 
   return (
     <main className="page">
-      <Head title="⚙️ Platformani sozlash" back="/" sub="Platformangizni o'z kursingizga moslang — qadamma-qadam" />
+      <Head title="Platformani sozlash" back="/" sub={`${b.name} · qadamma-qadam`} />
 
       <div className="card">
         <div className="row between">
           <span className="h3">Tayyorlik</span>
-          <b>{done}/{steps.length}</b>
+          <b style={{ color: "var(--brand)" }}>{done} / {steps.length}</b>
         </div>
         <Progress value={(done / steps.length) * 100} />
-        <div className="tiny sub">{done === steps.length ? "Hammasi tayyor — o'quvchilarni taklif qilishingiz mumkin 🎉" : "Yashil belgisi yo'q qadamlarni to'ldiring"}</div>
+        <div className="tiny sub">{done === steps.length ? "Hammasi tayyor — o'quvchilarni taklif qilishingiz mumkin 🎉" : `Yana ${steps.length - done} qadam — va o'quvchilarni taklif qilish mumkin.`}</div>
       </div>
 
       <div className="card">
         <div className="list">
-          {steps.map((x, i) => (
-            <Link key={i} href={x.href} className="li">
-              <span className={`num ${x.ok ? "ok" : ""}`}>{x.ok ? "✓" : i + 1}</span>
-              <div className="grow">
-                <div className="h3">{x.emoji} {x.t}</div>
-                <div className="tiny muted">{x.d}</div>
-              </div>
-              <span className="muted">›</span>
-            </Link>
-          ))}
+          {steps.map((x, i) => {
+            const cur = !x.ok && i === firstOpen;
+            return (
+              <Link key={i} href={x.href} className="li" style={{ padding: "12px 0" }}>
+                <span className={`stp ${x.ok ? "ok" : cur ? "cur" : ""}`}>{x.ok ? <ICheck size={14} /> : i + 1}</span>
+                <div className="grow">
+                  <div className="h3" style={{ fontWeight: cur ? 700 : 600, color: !x.ok && !cur ? "var(--ink-2)" : undefined }}>{x.t}</div>
+                  <div className="tiny muted">{x.d}</div>
+                </div>
+                {cur ? <span className="small" style={{ color: "var(--brand)", fontWeight: 700, whiteSpace: "nowrap" }}>Davom etish →</span> : <span className="muted">›</span>}
+              </Link>
+            );
+          })}
         </div>
       </div>
 

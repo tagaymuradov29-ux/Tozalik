@@ -34,6 +34,8 @@ export function Nav({ role, review, unread, chat = true }: { role: string; revie
   // Chat o'chirilgan bo'lsa, uning o'rnida Profil turadi
   const me: Item = { href: "/profil", label: "Profil", icon: <IUser /> };
   if (!chat) items.forEach((it, i) => { if (it.href === "/chat") items[i] = me; });
+  // Dars sahifasida pastda «Davom ettirish» tugmasi turadi — menyu yashiriladi
+  if (role === "student" && /^\/darslar\/\d+$/.test(path)) return null;
   const active = (h: string) => (h === "/" ? path === "/" : path.startsWith(h));
   return (
     <nav className="nav">

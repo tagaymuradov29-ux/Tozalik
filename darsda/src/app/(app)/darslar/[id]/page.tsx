@@ -10,7 +10,10 @@ import { Head, RowLink, StateBadge, Avatar } from "@/components/ui";
 import { Video } from "@/components/Video";
 import { ActionForm, Submit } from "@/components/Form";
 import { deleteLesson, saveLesson } from "@/app/actions/admin";
-import { IFile, ILock } from "@/components/icons";
+import { IBack, IFile, ILock, IPlay } from "@/components/icons";
+import { Tabs } from "@/components/Tabs";
+import type { Item } from "@/lib/progress";
+import type { User } from "@/lib/auth";
 
 export default async function LessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,6 +51,8 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
     : [];
   const locked = isStudent && !started;
   const [{ words }] = course.category === "til" ? await sql<{ words: number }[]>`select count(*)::int as words from vocab where lesson_id = ${l.id}` : [{ words: 0 }];
+
+  if (isStudent && prog) return <StudentLesson l={l} u={u} tasks={tasks} subs={subs} vp={vp} prog={prog} locked={locked} started={started} words={words} til={course.category === "til"} />;
 
   return (
     <main className="page">
@@ -290,3 +295,118 @@ async function VideoStats({ u, courseId, lessonId }: { u: Parameters<typeof scop
     </div>
   );
 }
+
+const EXT = (u: string) => (u.split("?")[0].match(/\.([a-z0-9]{2,4})$/i)?.[1] ?? "").toUpperCase();
+function MatRow({ m }: { m: { title: string; url: string } }) {
+  const e = EXT(m.url);
+  return (
+    <a href={m.url} target="_blank" rel="noreferrer" className="mat">
+      <span className={`mat-ic ${e === "PDF" ? "pdf" : ""}`}>{e && e.length <= 4 && !["HTML", "PHP"].includes(e) ? e : <IFile size={18} />}</span>
+      <span className="grow trunc">{m.title}</span>
+      <span className="muted">›</span>
+    </a>
+  );
+}
+
+const RTXT: Record<string, string> = { done: "Bajarildi", review: "Tekshiruvda", late: "Qarz", todo: "", na: "Yopiq" };
+function StudentLesson({ l, u, tasks, subs, vp, prog, locked, started, words, til }: {
+  l: Lesson; u: User; tasks: Task[]; subs: Sub[]; vp?: Watch & { position: number }; prog: { st: string; items: Item[] };
+  locked: boolean; started: boolean; words: number; til: boolean;
+}) {
+  const pct = vp?.duration ? Math.min(100, Math.round((vp.max_pos / vp.duration) * 100)) : vp?.done ? 100 : 0;
+  const rest = vp?.duration && !vp.done ? Math.max(0, Math.round(vp.duration - vp.position)) : 0;
+  const req = prog.items.filter((i) => i.st !== "na");
+  const okN = req.filter((i) => i.st === "done").length;
+  const next = prog.items.find((i) => i.st === "late" && i.href) ?? prog.items.find((i) => i.st === "todo" && i.href);
+  const cta = locked ? null
+    : next?.key === "vid" || (!next && l.video_url && !vp?.done)
+      ? { href: "#video", txt: vp?.position ? `Videoni davom ettirish${rest ? ` · ${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, "0")}` : ""}` : "Videoni ko'rish" }
+      : next ? { href: next.href!, txt: next.key === "att" ? "Davomatni belgilash" : `${next.st === "late" ? "Qarzni yopish" : "Yuborish"}: ${next.label}` }
+        : null;
+  return (
+    <main className="page lesson">
+      <div className="topbar">
+        <Link href="/darslar" className="back" aria-label="Orqaga"><IBack size={20} /></Link>
+        <div className="grow stack" style={{ gap: 1, minWidth: 0 }}>
+          <span className="tiny muted">{l.n}-dars · {fmtDay(l.starts_at, u.tz)}{l.speaker ? ` · ${l.speaker}` : ""}</span>
+          <b className="trunc" style={{ fontSize: 16 }}>{l.title}</b>
+        </div>
+      </div>
+      {locked ? (
+        <div className="card empty"><ILock /> <div>Dars {fmtDay(l.starts_at, u.tz)}, {fmtTime(l.starts_at, u.tz)} da ochiladi</div></div>
+      ) : (
+        <>
+          <div id="video" style={{ scrollMarginTop: 12 }}>
+            {l.video_url
+              ? <Video url={l.video_url} lessonId={l.id} start={vp?.position ?? 0} done={!!vp?.done} track />
+              : started && <div className="card tight sub small">Dars yozuvi hali joylanmagan.</div>}
+          </div>
+          <Tabs labels={["Dars", `Materiallar · ${l.materials.length}`, `Vazifa · ${tasks.length}`]}>
+            {[
+              <>
+                {l.content
+                  ? <div className="prose" dangerouslySetInnerHTML={{ __html: safeHtml(l.content) }} />
+                  : <p className="sub" style={{ margin: 0 }}>Dars matni hali qo&apos;shilmagan.</p>}
+                {l.materials.slice(0, 2).map((m, i) => <MatRow key={i} m={m} />)}
+                {til && words > 0 && (
+                  <div className="card">
+                    <div className="row between"><h2 className="h2">Dars so&apos;zlari</h2><span className="pill">{words} ta</span></div>
+                    <div className="grid2">
+                      <Link href={`/til/mashq?l=${l.id}`} className="btn line">Kartochkalar</Link>
+                      <Link href={`/til/talaffuz?l=${l.id}`} className="btn line">Talaffuz</Link>
+                    </div>
+                  </div>
+                )}
+                {prog.items.length > 0 && (
+                  <div className="card">
+                    <h2 className="h2">Darsni yopish shartlari · {okN}/{req.length}</h2>
+                    <div className="checks">
+                      {prog.items.map((i) => {
+                        const r = i.key === "vid" && i.st !== "done" ? `${pct}%` : RTXT[i.st] || (i.pts ? `+${i.pts}` : "");
+                        const body = (
+                          <>
+                            <span className={`ck ${i.key === "vid" && i.st !== "done" ? "now" : i.st}`}>{i.st === "done" ? <ICheckS /> : i.st === "late" ? "!" : null}</span>
+                            <span className="grow">{i.key === "vid" ? "Video ko'rish" : i.label}</span>
+                            <span className={`ck-r ${i.key === "vid" && i.st !== "done" ? "vid" : i.st}`}>{r}</span>
+                          </>
+                        );
+                        return i.href && i.key !== "vid" ? <Link key={i.key} href={i.href} className={`ck-row ${i.st}`}>{body}</Link> : <div key={i.key} className={`ck-row ${i.st}`}>{body}</div>;
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>,
+              <>
+                {l.materials.map((m, i) => <MatRow key={i} m={m} />)}
+                {!l.materials.length && <div className="card empty">Bu darsga material qo&apos;shilmagan</div>}
+              </>,
+              <>
+                {tasks.map((t) => {
+                  const st = taskState(t, subs);
+                  return (
+                    <Link key={t.id} href={`/vazifa/${t.id}`} className="card tight row" style={{ gap: 12 }}>
+                      <div className="grow">
+                        <div className="h3">{t.title}</div>
+                        <div className="tiny" style={{ color: st === "late" ? "var(--red-ink)" : "var(--ink-2)", marginTop: 2 }}>
+                          {t.max_points} ball{t.due_at ? ` · ${fmtDT(t.due_at, u.tz)}` : ""}{st === "todo" && t.due_at ? ` · ${left(t.due_at)}` : ""}
+                        </div>
+                      </div>
+                      <StateBadge s={st} />
+                    </Link>
+                  );
+                })}
+                {!tasks.length && <div className="card empty">Bu darsda vazifa yo&apos;q</div>}
+              </>,
+            ]}
+          </Tabs>
+        </>
+      )}
+      {cta && (
+        <div className="cta-bar">
+          <Link href={cta.href} className="btn full">{cta.href === "#video" && <IPlay size={16} />}{cta.txt}</Link>
+        </div>
+      )}
+    </main>
+  );
+}
+const ICheckS = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>;

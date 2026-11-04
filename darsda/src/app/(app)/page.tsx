@@ -13,8 +13,9 @@ import { langOf } from "@/lib/lang";
 import { myCourses } from "@/lib/accounts";
 import { SkyMini } from "@/components/Sky";
 import { fmtDay, fmtTime } from "@/lib/util";
-import { Head, Progress, RowLink, Avatar } from "@/components/ui";
-import { IBell, IQr } from "@/components/icons";
+import { ActBtn, Head, Progress, RowLink, Avatar } from "@/components/ui";
+import { nudge } from "@/app/actions/staff";
+import { IBell, ICheck, IClock, ILock, IPlay, IQr } from "@/components/icons";
 import { ThemeToggle } from "@/components/Theme";
 
 export default async function Home() {
@@ -51,7 +52,8 @@ async function StudentHome({ u }: { u: User }) {
   const b = await getBrand(u.platform_id);
   const [rank, F, K] = await Promise.all([ranking(course, u.group_id), flightData(ctx, u.id), on(b, "osmon") ? skyData(u, course) : null]);
   const R = road(ctx);
-  const mine = await myCourses(u);
+  const [mine, [{ unread }]] = await Promise.all([myCourses(u),
+    sql<{ unread: number }[]>`select count(*)::int as unread from notifications where user_id = ${u.id} and read_at is null`]);
   const TS = course.category === "til" ? wstats(await wordsFor(course.id, u.id)) : null;
   const TL = langOf(course.lang);
   const sat = F.A.filter((a) => a.st === "done").length;
@@ -62,62 +64,91 @@ async function StudentHome({ u }: { u: User }) {
   // Keyingi qadam: avval qarz, keyin bajarilmagan shart
   const nextItem = hp?.items.find((i) => i.st === "late" && i.href) ?? hp?.items.find((i) => i.st === "todo" && i.href);
   const first = u.name.split(" ")[0];
-  const HERE_TXT: Record<string, string> = { debt: "Qarz bor", current: "Davom etmoqda", review: "Tekshirilmoqda", done: "Yopilgan", locked: "Tez orada" };
+  const vid = hp?.items.find((i) => i.key === "vid");
+  const w = hl ? ctx.watch.find((x) => x.lesson_id === hl.id) : undefined;
+  const vpct = w?.duration ? Math.min(100, Math.round((w.max_pos / w.duration) * 100)) : w?.done ? 100 : 0;
+  const left = w?.duration && !w.done ? Math.max(0, Math.round(w.duration - w.max_pos)) : 0;
+  const req = hp?.items.filter((i) => i.st !== "na") ?? [];
+  const okN = req.filter((i) => i.st === "done").length;
+  const isDebt = R.states[R.here] === "debt";
+  const stepTxt = nextItem
+    ? `${nextItem.key === "vid" ? (vpct ? "videoni tugatish" : "videoni ko'rish") : nextItem.label.toLowerCase()}${nextItem.key === "vid" && left ? ` — ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} qoldi` : nextItem.st === "late" ? " — muddati o'tgan" : ""}`
+    : null;
+  const other = R.debts - (isDebt ? 1 : 0);
+  const grp = mine.find((c) => c.current)?.group_name;
 
   return (
     <main className="page">
-      <Head title={`Salom, ${first}`} right={<Bell name={u.name} />} sub={mine.length > 1 ? <Link href="/kurslar" className="pill info" style={{ padding: "4px 10px" }}>{course.title} · {mine.length} ta kurs ▾</Link> : course.title} />
-
-      <div className="card tight">
-        <div className="row between">
-          <div className="stack" style={{ gap: 0 }}>
-            <span className="tiny muted">Jami ball</span>
-            <span className="big">{me?.total ?? 0}</span>
-          </div>
-          {on(b, "reyting") && (
-            <Link href="/natijalar" className="stack" style={{ gap: 0, alignItems: "center" }}>
-              <span className="tiny muted">Guruhda</span>
-              <b style={{ fontSize: 18 }}>{me?.rank ?? "—"}-o&apos;rin</b>
-            </Link>
-          )}
-          <div className="stack" style={{ gap: 0, alignItems: "flex-end" }}>
-            <span className="tiny muted">Yopilgan darslar</span>
-            <b style={{ fontSize: 18 }}>{R.closed}/{R.opened}</b>
-          </div>
+      <div className="row" style={{ gap: 12, padding: "4px 0 2px" }}>
+        <Link href="/profil" aria-label="Profil"><Avatar name={u.name} size={48} /></Link>
+        <div className="grow stack" style={{ gap: 2 }}>
+          <b style={{ fontSize: 17 }} className="trunc">Salom, {first}</b>
+          {mine.length > 1
+            ? <Link href="/kurslar" className="small" style={{ color: "var(--brand)", fontWeight: 600 }}>{course.title} · {mine.length} ta kurs ▾</Link>
+            : <span className="small muted trunc">{course.title}{grp ? ` · ${grp}` : ""}</span>}
         </div>
-        {goal && (
-          <>
-            <Progress value={((me?.total ?? 0) / goal.pts) * 100} />
-            <div className="tiny sub">{goal.label} — {goal.pts} ball{(me?.total ?? 0) < goal.pts ? `, yana ${goal.pts - (me?.total ?? 0)}` : " ✓"}</div>
-          </>
-        )}
+        <Link href="/bildirishnomalar" className="back" aria-label="Bildirishnomalar" style={{ position: "relative" }}>
+          <IBell size={20} />{unread > 0 && <i className="dot" />}
+        </Link>
       </div>
 
       {hl && (
-        <div className="card" style={{ borderColor: R.states[R.here] === "debt" ? "var(--red)" : undefined }}>
+        <div className={`hero${isDebt ? " debt" : ""}`}>
           <div className="row between">
-            <span className="tiny muted">Hozir qayerdasiz</span>
-            <span className={`pill ${R.states[R.here] === "debt" ? "bad" : R.states[R.here] === "review" ? "warn" : R.states[R.here] === "done" ? "ok" : "info"}`}>{HERE_TXT[R.states[R.here]]}</span>
+            <span className="hero-meta">{hl.n}-dars{hl.speaker ? ` · ${hl.speaker}` : ""}</span>
+            <span className="hero-tag">{isDebt ? "Qarz" : R.states[R.here] === "review" ? "Tekshiruvda" : R.states[R.here] === "done" ? "Yopilgan" : "Bugun"}</span>
           </div>
-          <Link href={`/darslar/${hl.id}`} className="stack" style={{ gap: 2 }}>
-            <div className="h2">{hl.n}-dars. {hl.title}</div>
-            <div className="tiny muted">{fmtDay(hl.starts_at, u.tz)}, {fmtTime(hl.starts_at, u.tz)}{hl.speaker ? ` · ${hl.speaker}` : ""}</div>
-          </Link>
-          {hp && hp.items.length > 0 && (
-            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-              {hp.items.map((i) => (
-                <span key={i.key} className={`pill ${i.st === "done" ? "ok" : i.st === "late" ? "bad" : i.st === "review" ? "warn" : ""}`}>
-                  {i.st === "done" ? "✓ " : i.st === "late" ? "! " : ""}{i.label}
-                </span>
-              ))}
+          <Link href={`/darslar/${hl.id}`} className="hero-title">{hl.title}</Link>
+          {req.length > 0 && (
+            <div className="stack" style={{ gap: 6 }}>
+              <div className="hero-bar"><i style={{ width: `${vid ? vpct : (okN / req.length) * 100}%` }} /></div>
+              <div className="row between hero-meta"><span>{vid ? `Video ${vpct}% ko'rildi` : `${okN} ta shart bajarildi`}</span><span>{okN} / {req.length} shart</span></div>
             </div>
           )}
-          {nextItem ? (
-            <Link href={nextItem.href!} className="btn full">{nextItem.st === "late" ? "Qarzni yopish" : "Davom etish"}: {nextItem.label}</Link>
-          ) : (
-            <Link href={`/darslar/${hl.id}`} className="btn soft full">Darsni ochish</Link>
+          {stepTxt && (
+            <div className="hero-next"><IClock size={18} /><span><b>Keyingi qadam:</b> {stepTxt}</span></div>
           )}
-          {(() => { const other = R.debts - (R.states[R.here] === "debt" ? 1 : 0); return other > 0 && <div className="tiny" style={{ color: "var(--red)" }}>{R.states[R.here] === "debt" ? "Yana " : ""}{other} ta darsda qarz bor — xaritada qizil</div>; })()}
+          <Link href={nextItem?.href ?? `/darslar/${hl.id}`} className="btn light full"><IPlay size={16} /> {nextItem?.st === "late" ? "Qarzni yopish" : nextItem ? "Davom etish" : "Darsni ochish"}</Link>
+        </div>
+      )}
+      {other > 0 && <Link href="#xarita" className="err" style={{ fontWeight: 600 }}>{isDebt ? "Yana " : ""}{other} ta darsda qarz bor — xaritada qizil ›</Link>}
+
+      {hp && hp.items.length > 0 && (
+        <div className="card">
+          <h2 className="h2">Darsni yopish uchun</h2>
+          <div className="checks">
+            {hp.items.map((i) => {
+              const right = i.key === "vid" ? (i.st === "done" ? "Ko'rildi" : `${vpct}%`) : i.st === "done" ? (i.pts ? `+${i.pts}` : "Bajarildi") : i.st === "review" ? "Tekshiruvda" : i.st === "late" ? "Qarz" : i.st === "na" ? "" : i.pts ? `+${i.pts}` : "";
+              const body = (
+                <>
+                  <span className={`ck ${i.key === "vid" && i.st !== "done" ? "now" : i.st}`}>{i.st === "done" ? <ICheck size={14} /> : i.st === "late" ? "!" : i.st === "na" ? <ILock size={12} /> : null}</span>
+                  <span className="grow">{i.key === "vid" ? "Videoni ko'rish" : i.label}</span>
+                  <span className={`ck-r ${i.st}`}>{right}</span>
+                </>
+              );
+              return i.href ? <Link key={i.key} href={i.href} className={`ck-row ${i.st}`}>{body}</Link> : <div key={i.key} className={`ck-row ${i.st}`}>{body}</div>;
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="grid2">
+        <Link href="/natijalar" className="card tight">
+          <span className="small muted">Ballim</span>
+          <b className="tile-n">{(me?.total ?? 0).toLocaleString("ru-RU")}</b>
+          {on(b, "reyting") && me ? <span className="small" style={{ color: "var(--ok-ink)", fontWeight: 600 }}>{me.rank}-o&apos;rin guruhda</span>
+            : goal ? <span className="small muted">{goal.label}: {goal.pts}</span> : null}
+        </Link>
+        <Link href="#xarita" className="card tight">
+          <span className="small muted">Yo&apos;l xaritasi</span>
+          <b className="tile-n">{R.closed} / {lessons.length}</b>
+          {R.debts ? <span className="small" style={{ color: "var(--red-ink)", fontWeight: 600 }}>{R.debts} ta qarz</span> : <span className="small" style={{ color: "var(--ok-ink)", fontWeight: 600 }}>Qarz yo&apos;q</span>}
+        </Link>
+      </div>
+      {goal && (
+        <div className="card tight">
+          <div className="row between small"><span className="muted">Keyingi maqsad: <b style={{ color: "var(--ink)" }}>{goal.label}</b></span><b style={{ color: "var(--brand)" }}>{(me?.total ?? 0) < goal.pts ? `${goal.pts - (me?.total ?? 0)} ball qoldi` : "✓"}</b></div>
+          <Progress value={((me?.total ?? 0) / goal.pts) * 100} />
         </div>
       )}
 
@@ -141,7 +172,7 @@ async function StudentHome({ u }: { u: User }) {
       </Link>}
       {K && <SkyMini K={K} title={label(b, "osmon")} />}
 
-      <div className="card">
+      <div className="card" id="xarita" style={{ scrollMarginTop: 12 }}>
         <div className="row between">
           <h2 className="h2">Yo&apos;l xaritasi</h2>
           <span className="tiny muted">{R.closed} ta dars yopilgan</span>
@@ -164,7 +195,8 @@ async function StaffHome({ u }: { u: User }) {
   ]);
   const ids = students.map((s) => s.id);
   const [pending, subs, groups] = await Promise.all([
-    sql<{ n: number }[]>`select count(*)::int as n from submissions where status = 'pending' and user_id = any(${ids})`,
+    sql<{ n: number; oldest: Date | null; late: number }[]>`select count(*)::int as n, min(created_at) as oldest, count(*) filter (where late)::int as late
+      from submissions where status = 'pending' and user_id = any(${ids})`,
     sql<{ user_id: number; task_id: number; status: string }[]>`
       select user_id, task_id, status from submissions where user_id = any(${ids}) and status in ('pending','approved','rejected')`,
     sql<{ id: number; name: string; curator: string | null; n: number }[]>`
@@ -210,23 +242,17 @@ async function StaffHome({ u }: { u: User }) {
         </Link>
       )}
 
-      <div className="grid2">
-        <Link href="/tekshirish" className="card tight">
-          <span className="tiny muted">Tekshirish kutmoqda</span>
-          <span className="big" style={{ color: pending[0].n ? "var(--amber)" : undefined }}>{pending[0].n}</span>
-        </Link>
-        <Link href="/guruh" className="card tight">
-          <span className="tiny muted">O&apos;quvchilar</span>
-          <span className="big">{students.length}</span>
-        </Link>
-        <div className="card tight">
-          <span className="tiny muted">Oxirgi dars davomati</span>
-          <span className="big">{students.length ? Math.round((came / students.length) * 100) : 0}%</span>
-        </div>
-        <div className="card tight">
-          <span className="tiny muted">Qarzdorlar</span>
-          <span className="big" style={{ color: debtors.length ? "var(--red)" : undefined }}>{debtors.length}</span>
-        </div>
+      <div className="hero">
+        <span className="hero-meta">Tekshirish kutmoqda</span>
+        <b style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{pending[0].n}</b>
+        <span className="hero-meta">{pending[0].oldest ? `Eng eskisi: ${ago(pending[0].oldest)}${pending[0].late ? ` · ${pending[0].late} tasi muddatdan o'tgan` : ""}` : "Hamma ish tekshirilgan — yangi ish kelsa, xabar keladi"}</span>
+        <Link href="/tekshirish" className="btn light full">{pending[0].n ? "Tekshirishni boshlash" : "Tekshirilganlar"}</Link>
+      </div>
+
+      <div className="grid3">
+        <Link href="/jurnal" className="card tight"><b className="tile-n">{students.length - debtors.length}</b><span className="tiny muted">o&apos;z vaqtida</span></Link>
+        <Link href="/jurnal" className="card tight"><b className="tile-n" style={{ color: debtors.length ? "#B45309" : undefined }}>{debtors.length}</b><span className="tiny muted">qarzdor</span></Link>
+        <Link href={`/davomat${last ? `?l=${last.id}` : ""}`} className="card tight"><b className="tile-n">{students.length ? Math.round((came / students.length) * 100) : 0}%</b><span className="tiny muted">davomat</span></Link>
       </div>
 
       {next && (
@@ -250,14 +276,16 @@ async function StaffHome({ u }: { u: User }) {
         </div>
         <div className="list">
           {behind.slice(0, 6).map((r) => (
-            <RowLink key={r.id} href={`/oquvchi/${r.id}`}>
-              <Avatar name={r.name} size={32} />
-              <div className="grow">
-                <div className="h3 trunc">{r.name}</div>
-                <div className="tiny muted">{r.group_name}</div>
-              </div>
-              <span className={`pill ${r.debt ? "bad" : "warn"}`}>{r.stop!.n}-dars{r.debt ? ` · ${r.debt} qarz` : ""}</span>
-            </RowLink>
+            <div key={r.id} className="li">
+              <Link href={`/oquvchi/${r.id}`} className="row grow" style={{ gap: 10, minWidth: 0 }}>
+                <Avatar name={r.name} size={36} />
+                <div className="grow">
+                  <div className="h3 trunc">{r.name}</div>
+                  <div className="tiny" style={{ color: r.debt ? "var(--red-ink)" : "var(--ink-2)" }}>{r.stop!.n}-dars{r.debt ? ` · ${r.debt} ta qarz` : " · jarayonda"}</div>
+                </div>
+              </Link>
+              <ActBtn action={nudge} fields={{ user_id: r.id }} className="btn sm line">Eslatish</ActBtn>
+            </div>
           ))}
           {!behind.length && <div className="empty">{students.length ? "Hamma o'quvchi barcha darslarni yopgan 🎉" : "Hali o'quvchi yo'q"}</div>}
         </div>
@@ -345,3 +373,8 @@ async function Extras({ u, courseId, b }: { u: User; courseId: number; b: Brand 
   );
 }
 
+
+function ago(d: Date) {
+  const h = Math.floor((Date.now() - new Date(d).getTime()) / 3600000);
+  return h < 1 ? "hozirgina" : h < 48 ? `${h} soat oldin` : `${Math.floor(h / 24)} kun oldin`;
+}

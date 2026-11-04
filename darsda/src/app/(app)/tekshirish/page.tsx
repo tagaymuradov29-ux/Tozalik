@@ -7,6 +7,7 @@ import { fmtDT, STATUS_LABEL } from "@/lib/util";
 import { Head, Avatar } from "@/components/ui";
 import { Files } from "@/components/Files";
 import { ActionForm, Submit } from "@/components/Form";
+import { GradeBox } from "@/components/GradeBox";
 import { gradeSubmission, reopenSubmission } from "@/app/actions/staff";
 import { reviewProof } from "@/app/actions/net";
 import type { User } from "@/lib/auth";
@@ -70,7 +71,7 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
                 <Link href={`/oquvchi/${r.user_id}`} className="h3 trunc" style={{ display: "block" }}>{r.name}</Link>
                 <div className="tiny muted">{many ? `${r.course} · ` : ""}{r.group_name} · {fmtDT(r.created_at, u.tz)}</div>
               </div>
-              {r.late && <span className="pill warn">kechikib</span>}
+              {done ? null : r.late ? <span className="pill warn">Kechikib</span> : <span className="pill ok">O&apos;z vaqtida</span>}
             </div>
             <Link href={`/vazifa/${r.task_id}`} className="pill info" style={{ alignSelf: "flex-start" }}>{r.title}</Link>
             {r.text && (r.kind === "workbook" ? (
@@ -87,20 +88,7 @@ export default async function Tekshirish({ searchParams }: { searchParams: Promi
                 <form action={reopenSubmission}><input type="hidden" name="id" value={r.id} /><button className="btn sm ghost">Qayta ochish</button></form>
               </div>
             ) : (
-              <ActionForm action={gradeSubmission}>
-                <input type="hidden" name="id" value={r.id} />
-                <div className="row">
-                  <label className="field grow">
-                    <span>Ball (0–{cap})</span>
-                    <input className="input" name="points" type="number" min={0} max={cap} defaultValue={cap} inputMode="numeric" />
-                  </label>
-                </div>
-                <textarea className="input" name="feedback" rows={2} placeholder="Izoh (qaytarishda — majburiy)" style={{ minHeight: 60 }} />
-                <div className="grid2">
-                  <Submit name="decision" value="reject" className="btn danger">Qaytarish</Submit>
-                  <Submit name="decision" value="approve" className="btn">Qabul qilish</Submit>
-                </div>
-              </ActionForm>
+              <GradeBox id={r.id} cap={cap} action={gradeSubmission} />
             )}
             {done && r.grader && <div className="tiny muted">✓ {r.grader} tekshirdi{r.graded_at ? ` · ${fmtDT(r.graded_at, u.tz)}` : ""}</div>}
             {done && r.feedback && <div className="tiny sub">💬 {r.feedback}</div>}

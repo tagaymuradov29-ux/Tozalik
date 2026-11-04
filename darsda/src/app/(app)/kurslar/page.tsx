@@ -3,7 +3,8 @@ import { sql } from "@/lib/db";
 import { currentCourse } from "@/lib/course";
 import { myCourses } from "@/lib/accounts";
 import { catOf, langOf } from "@/lib/lang";
-import { Head } from "@/components/ui";
+import { CourseTile, Head } from "@/components/ui";
+import { abbr } from "@/components/LoginScreen";
 import { switchMyCourse } from "@/app/actions/auth";
 import { switchCourse } from "@/app/actions/admin";
 
@@ -26,22 +27,19 @@ export default async function Kurslar() {
   return (
     <main className="page">
       <Head title="Qaysi kursga kirmoqchisiz?" back="/" sub={list.length > 1 ? `${list.length} ta kurs` : undefined} />
-      {list.map((c) => {
+      {list.map((c, i) => {
         const L = langOf(c.lang), C = catOf(c.category);
         return (
           <form key={c.key} action={c.action}>
             <input type="hidden" name="id" value={c.value} />
-            <button className="card row" style={{ width: "100%", textAlign: "left", gap: 14, cursor: "pointer", font: "inherit", color: "inherit", border: c.current ? "2px solid var(--brand)" : undefined }}>
-              <span style={{ width: 52, height: 52, borderRadius: 16, background: "var(--brand-soft)", display: "grid", placeItems: "center", fontSize: 26, flex: "none" }}>{L?.flag ?? C.emoji}</span>
-              <span className="grow stack" style={{ gap: 2 }}>
-                <span className="h3">{c.course}</span>
-                <span className="tiny muted">{C.name}{c.sub ? ` · ${c.sub}` : ""}</span>
-              </span>
-              {c.current ? <span className="pill ok">hozir</span> : <span className="muted">›</span>}
+            <button className="pickbtn">
+              <CourseTile i={i} current={c.current} code={L ? L.key.toUpperCase() : abbr(c.course)} title={c.course}
+                sub={`${C.name}${c.sub ? ` · ${c.sub}` : ""}`} role={c.current ? "Hozir" : undefined} />
             </button>
           </form>
         );
       })}
+      <p className="sub small" style={{ textAlign: "center" }}>Keyin profil orqali boshqa kursga o&apos;tishingiz mumkin.</p>
       {!list.length && <div className="card empty">Hali kurs yo&apos;q</div>}
     </main>
   );

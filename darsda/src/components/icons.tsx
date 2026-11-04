@@ -58,3 +58,6 @@ export const IBell = ({ size }: P) => (
 export const IFile = ({ size }: P) => (
   <svg {...s(size)}><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z" /><path d="M14 3.5v5h5" /></svg>
 );
+export const IClock = ({ size }: P) => (
+  <svg {...s(size)}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+);
