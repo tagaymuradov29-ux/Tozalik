@@ -21,6 +21,7 @@ export default async function Modullar() {
                 <span className="stack" style={{ gap: 0 }}>
                   <b>{label(b, m.key)}</b>
                   <span className="tiny muted">{m.about}</span>
+                  <span className="tiny" style={{ color: "var(--brand-ink)" }}>Yoqsangiz: {m.why}</span>
                 </span>
               </span>
               <input type="checkbox" className="switch" name={`on_${m.key}`} defaultChecked={on(b, m.key)} />

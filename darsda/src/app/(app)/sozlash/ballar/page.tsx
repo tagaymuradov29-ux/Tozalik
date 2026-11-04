@@ -7,15 +7,15 @@ import { ActionForm, Submit } from "@/components/Form";
 import { saveCourse } from "@/app/actions/admin";
 import { CATEGORIES, LANGS } from "@/lib/lang";
 
-const PF: [keyof typeof DEFAULT_POINTS, string][] = [
-  ["att_ontime", "Vaqtida kelsa"],
-  ["att_late1", "Kechiksa (1-bosqich)"],
-  ["att_late2", "Kechiksa (2-bosqich)"],
-  ["att_absent", "Kelmasa"],
-  ["late_ok_min", "Necha daqiqagacha «vaqtida»"],
-  ["late1_max", "1-bosqich chegarasi (daq)"],
-  ["late2_max", "2-bosqich chegarasi (daq)"],
-  ["window_after_min", "Davomat kodi ochiq turadi (daq)"],
+const PF: [keyof typeof DEFAULT_POINTS, string, string][] = [
+  ["att_ontime", "Vaqtida kelsa", "O'quvchi darsga vaqtida belgilansa shuncha ball oladi. Davomatni rag'batlantiradi."],
+  ["att_late1", "Kechiksa (1-bosqich)", "Ozgina kechikkanga beriladigan ball yoki jarima (manfiy son — jarima)."],
+  ["att_late2", "Kechiksa (2-bosqich)", "Ko'proq kechikkanga. Odatda 1-bosqichdan kattaroq jarima."],
+  ["att_absent", "Kelmasa", "Darsga umuman kelmaganga jarima. 0 qo'ysangiz — jarima yo'q."],
+  ["late_ok_min", "«Vaqtida» hisoblanadigan daqiqa", "Dars boshlangandan necha daqiqagacha kelgan «vaqtida» hisoblanadi."],
+  ["late1_max", "1-bosqich chegarasi (daq)", "Shu daqiqagacha kechikkan — 1-bosqich."],
+  ["late2_max", "2-bosqich chegarasi (daq)", "Shu daqiqagacha — 2-bosqich, undan keyin «kelmadi»."],
+  ["window_after_min", "Davomat kodi ochiq (daq)", "Dars boshlangach kod yoki QR necha daqiqa ishlaydi."],
 ];
 
 export default async function Ballar() {
@@ -52,10 +52,16 @@ export default async function Ballar() {
           <h2 className="h2">Davomat ballari</h2>
           <div className="tiny sub">Minus ball — jarima. Masalan, kelmasa −20.</div>
           <div className="grid2">
-            {PF.map(([k, l]) => (
-              <label key={k} className="field"><span>{l}</span><input className="input" name={k} type="number" defaultValue={c.points[k] as number} /></label>
+            {PF.map(([k, l, d]) => (
+              <label key={k} className="field"><span>{l}</span><input className="input" name={k} type="number" defaultValue={c.points[k] as number} /><span className="tiny muted" style={{ fontWeight: 400 }}>{d}</span></label>
             ))}
           </div>
+        </div>
+        <div className="card">
+          <h2 className="h2">O&apos;z qoidalaringiz</h2>
+          <div className="tiny sub"><b>Bu nima?</b> Istalgan harakat uchun ball qo&apos;shish yoki ayirish. Har qatorda: <b>ball — harakat</b> (jarima uchun minus).
+            <br /><b>Yoqsam nima beradi?</b> Kurator o&apos;quvchi sahifasida shu qoidalarni bir bosishda beradi, o&apos;quvchiga darhol xabar boradi.</div>
+          <textarea className="input" name="rules" rows={5} defaultValue={c.points.rules.map((r) => `${r.pts > 0 ? "+" : ""}${r.pts} — ${r.label}`).join("\n")} placeholder={"+10 — Darsda faol qatnashdi\n+5 — Guruhda boshqalarga yordam berdi\n-5 — Kamerasiz qatnashdi\n-10 — Darsni bezovta qildi"} />
         </div>
         <Submit>Saqlash</Submit>
       </ActionForm>

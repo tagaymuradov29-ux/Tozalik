@@ -82,6 +82,16 @@ export async function addBonus(_: FormState, fd: FormData): Promise<FormState> {
   return { ok: "Qo'shildi" };
 }
 
+/** O'z qoidasi bo'yicha bir bosishda ball (kurs sozlamasidagi qoidalardan) */
+export async function quickBonus(fd: FormData) {
+  const u = await requireUser(["admin", "curator"]);
+  const uid = Number(fd.get("user_id")), pts = Math.round(Number(fd.get("points"))), note = String(fd.get("note") || "").trim();
+  if (!pts || Math.abs(pts) > 500 || !note || !(await canManage(u, uid))) return;
+  await sql`insert into bonuses (user_id, points, note, by_id) values (${uid}, ${pts}, ${note}, ${u.id})`;
+  await notify([uid], pts > 0 ? `+${pts} ball: ${note}` : `${pts} ball: ${note}`, "", "/natijalar");
+  revalidatePath("/", "layout");
+}
+
 export async function deleteBonus(fd: FormData) {
   const u = await requireUser(["admin"]);
   await sql`delete from bonuses b using users s where b.id = ${Number(fd.get("id"))} and s.id = b.user_id and s.platform_id = ${u.platform_id}`;

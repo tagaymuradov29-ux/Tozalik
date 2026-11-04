@@ -5,12 +5,12 @@ import { FONTS, journey } from "./journeys";
 
 /** Yoqib-o'chiriladigan modullar. Har bir mijoz o'ziga keraklisini tanlaydi va nomini o'zgartira oladi. */
 export const MODS = [
-  { key: "parvoz", label: "Bozorga parvoz", emoji: "🚀", about: "Ballar raketa ko'rinishida: orbita va Oy — kurs maqsadlari" },
-  { key: "osmon", label: "Tanishuvlar osmoni", emoji: "✨", about: "Networking tanishuvlari yulduzlar xaritasida" },
-  { key: "networking", label: "Networking", emoji: "🤝", about: "Har hafta juftliklar, isbot va ball" },
-  { key: "workshop", label: "Workshop", emoji: "🏆", about: "Jamoaviy topshiriq va ovoz berish" },
-  { key: "chat", label: "Chat", emoji: "💬", about: "Guruh chati va kurator bilan yozishma" },
-  { key: "reyting", label: "Reyting", emoji: "📊", about: "O'quvchilar o'rtasida ball bo'yicha o'rinlar" },
+  { key: "parvoz", label: "Bozorga parvoz", emoji: "🚀", about: "Ballar raketa ko'rinishida: orbita va Oy — kurs maqsadlari", why: "O'quvchi o'z o'sishini ko'radi — maqsadga intilish kuchayadi" },
+  { key: "osmon", label: "Tanishuvlar osmoni", emoji: "✨", about: "Networking tanishuvlari yulduzlar xaritasida", why: "Tanishuvlar ko'rinadigan bo'ladi — o'quvchilar faolroq tanishadi" },
+  { key: "networking", label: "Networking", emoji: "🤝", about: "Har hafta juftliklar, isbot va ball", why: "O'quvchilar bir-biri bilan tanishadi, jamoa va sodiqlik oshadi" },
+  { key: "workshop", label: "Workshop", emoji: "🏆", about: "Jamoaviy topshiriq va ovoz berish", why: "Jamoada ishlash va raqobat — darsdan keyin ham qiziqish" },
+  { key: "chat", label: "Chat", emoji: "💬", about: "Guruh chati va kurator bilan yozishma", why: "Savollar platforma ichida qoladi — Telegram'ga chiqib ketmaydi" },
+  { key: "reyting", label: "Reyting", emoji: "📊", about: "O'quvchilar o'rtasida ball bo'yicha o'rinlar", why: "Raqobat — vazifalarni o'z vaqtida bajarishga undaydi" },
 ] as const;
 export type ModKey = (typeof MODS)[number]["key"];
 

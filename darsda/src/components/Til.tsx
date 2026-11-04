@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { answerCard, savePron } from "@/app/actions/til";
 import { ARABIC, arForms, HARAKAT, similarity } from "@/lib/lang";
 import { canListen, listen, speak } from "./speech";
 
-type Card = { id: number; word: string; tr: string; translit: string; example: string; pron?: number | null };
+type Card = { id: number; word: string; tr: string; translit: string; example: string; image?: string; pron?: number | null };
 
 function Say({ text, lang, size = 20 }: { text: string; lang: string; size?: number }) {
   return (
@@ -13,47 +13,76 @@ function Say({ text, lang, size = 20 }: { text: string; lang: string; size?: num
   );
 }
 
-/** Kartochkalar: so'z → bosilsa tarjimasi. «Bildim» / «Bilmadim» — takrorlash jadvali shunga qarab tuziladi */
-export function Flashcards({ cards, lang, rtl, back }: { cards: Card[]; lang: string; rtl?: boolean; back: string }) {
+/** Kartochkalar: bir bosishda tarjima; svayp — o'ngga «bildim», chapga «bilmadim» (Bilmagan so'zlarimga), tepaga «juda oson».
+ *  dir="rev" — o'zbekchadan chet tiliga. */
+export function Flashcards({ cards, lang, rtl, back, dir = "fwd" }: { cards: Card[]; lang: string; rtl?: boolean; back: string; dir?: "fwd" | "rev" }) {
   const [q, setQ] = useState(cards);
   const [open, setOpen] = useState(false);
   const [ok, setOk] = useState(0);
   const [bad, setBad] = useState(0);
-  const [, start] = useTransition();
+  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+  const [exit, setExit] = useState<"" | "r" | "l" | "u">("");
+  const start = useRef<{ x: number; y: number; t: number } | null>(null);
+  const [, startT] = useTransition();
   const c = q[0];
-  useEffect(() => { if (c) speak(c.word, lang); }, [c, lang]);
+  useEffect(() => { if (c && dir === "fwd") speak(c.word, lang); }, [c, lang, dir]);
   if (!c) return (
     <div className="card" style={{ textAlign: "center", alignItems: "center" }}>
       <span style={{ fontSize: 44 }}>🎉</span>
       <b style={{ fontSize: 18 }}>Bugungi mashq tugadi!</b>
-      <span className="small sub">✅ {ok} ta bildingiz · 🔁 {bad} ta qayta takrorlandi</span>
+      <span className="small sub">✅ {ok} ta bildingiz · 🔁 {bad} ta «Bilmagan so&apos;zlarim»ga tushdi</span>
       <Link href={back} className="btn full">Orqaga</Link>
     </div>
   );
-  const answer = (yes: boolean) => {
-    start(() => answerCard(c.id, yes));
+  const answer = (kind: "r" | "l" | "u") => {
+    if (exit) return;
+    const yes = kind !== "l";
+    startT(() => answerCard(c.id, yes, kind === "u"));
     if (yes) setOk((x) => x + 1); else setBad((x) => x + 1);
-    setQ((x) => (yes ? x.slice(1) : [...x.slice(1), x[0]]));
-    setOpen(false);
+    setExit(kind);
+    setTimeout(() => { setQ((x) => (yes ? x.slice(1) : [...x.slice(1), x[0]])); setOpen(false); setExit(""); setDrag(null); }, 230);
   };
+  const front = dir === "fwd"
+    ? <><div dir={rtl ? "rtl" : undefined} style={{ fontSize: rtl ? 40 : 32, fontWeight: 700, lineHeight: 1.3 }}>{c.word}</div>{c.translit && <div className="small muted">{c.translit}</div>}</>
+    : <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.3 }}>{c.tr || "—"}</div>;
+  const backSide = dir === "fwd"
+    ? <><div style={{ fontSize: 22, fontWeight: 600, color: "var(--brand-ink)" }}>{c.tr || "—"}</div>{c.example && <div className="small sub" dir={rtl ? "rtl" : undefined}>{c.example}</div>}</>
+    : <><div dir={rtl ? "rtl" : undefined} style={{ fontSize: rtl ? 34 : 26, fontWeight: 700, color: "var(--brand-ink)" }}>{c.word}</div>{c.translit && <div className="small muted">{c.translit}</div>}{c.example && <div className="small sub" dir={rtl ? "rtl" : undefined}>{c.example}</div>}</>;
+  const dx = exit === "r" ? 480 : exit === "l" ? -480 : drag?.x ?? 0, dy = exit === "u" ? -700 : drag?.y ?? 0;
+  const hint = dx > 40 ? "Bildim ✓" : dx < -40 ? "Bilmadim" : dy < -40 ? "Juda oson ↑" : "";
   return (
     <>
       <div className="tiny muted" style={{ textAlign: "center" }}>Qoldi: {q.length} ta · ✅ {ok}</div>
-      <div role="button" tabIndex={0} onClick={() => setOpen(true)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen(true); }} className="card flash" aria-label="Tarjimani ko'rish">
-        <div className="row between" style={{ width: "100%" }}><span className="tiny muted">{open ? "Tarjima" : "Bosing — tarjimasi chiqadi"}</span><Say text={c.word} lang={lang} /></div>
-        <div dir={rtl ? "rtl" : undefined} style={{ fontSize: rtl ? 40 : 32, fontWeight: 700, lineHeight: 1.3 }}>{c.word}</div>
-        {c.translit && <div className="small muted">{c.translit}</div>}
-        {open && (
-          <>
-            <div style={{ height: 1, background: "var(--line)", width: "100%" }} />
-            <div style={{ fontSize: 22, fontWeight: 600, color: "var(--brand-ink)" }}>{c.tr || "—"}</div>
-            {c.example && <div className="small sub" dir={rtl ? "rtl" : undefined}>{c.example}</div>}
-          </>
+      <div role="button" tabIndex={0} className="card flash"
+        style={{ transform: `translate(${dx}px, ${dy}px) rotate(${dx / 18}deg)`, transition: drag && !exit ? "none" : "transform .23s ease", touchAction: "none", userSelect: "none",
+          boxShadow: hint ? `0 0 0 3px ${dx > 40 || dy < -40 ? "var(--ok)" : "var(--red)"}` : undefined }}
+        onPointerDown={(e) => { start.current = { x: e.clientX, y: e.clientY, t: Date.now() }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); }}
+        onPointerMove={(e) => { if (start.current) setDrag({ x: e.clientX - start.current.x, y: Math.min(0, e.clientY - start.current.y) }); }}
+        onPointerUp={() => {
+          const d = drag; start.current = null;
+          if (d && d.x > 90) return answer("r");
+          if (d && d.x < -90) return answer("l");
+          if (d && d.y < -90) return answer("u");
+          if (!d || (Math.abs(d.x) < 8 && Math.abs(d.y) < 8)) setOpen((o) => !o);
+          setDrag(null);
+        }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen((o) => !o); if (e.key === "ArrowRight") answer("r"); if (e.key === "ArrowLeft") answer("l"); if (e.key === "ArrowUp") answer("u"); }}
+        aria-label="Kartochka: bosing — tarjima, o'ngga — bildim, chapga — bilmadim">
+        <div className="row between" style={{ width: "100%" }}>
+          <span className="tiny" style={{ fontWeight: 700, color: hint ? (dx > 40 || dy < -40 ? "var(--ok)" : "var(--red)") : "var(--ink-3)" }}>{hint || (open ? "Tarjima" : "Bosing — tarjimasi chiqadi")}</span>
+          <Say text={c.word} lang={lang} />
+        </div>
+        {c.image && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.image} alt="" style={{ width: 120, height: 90, objectFit: "cover", borderRadius: 12 }} draggable={false} />
         )}
+        {front}
+        {open && <><div style={{ height: 1, background: "var(--line)", width: "100%" }} />{backSide}</>}
       </div>
+      <div className="tiny muted" style={{ textAlign: "center" }}>← chapga: bilmadim · o&apos;ngga: bildim → · ↑ tepaga: juda oson</div>
       <div className="grid2">
-        <button type="button" className="btn danger" onClick={() => answer(false)}>🔁 Bilmadim</button>
-        <button type="button" className="btn" onClick={() => answer(true)}>✅ Bildim</button>
+        <button type="button" className="btn danger" onClick={() => answer("l")}>🔁 Bilmadim</button>
+        <button type="button" className="btn" onClick={() => answer("r")}>✅ Bildim</button>
       </div>
     </>
   );

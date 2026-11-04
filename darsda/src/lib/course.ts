@@ -15,6 +15,8 @@ export type PointsCfg = {
   late2_max: number;
   window_after_min: number;
   goals: { pts: number; label: string }[];
+  /** O'z qoidalari: kurator bir bosishda beradigan +/- ball (masalan «Darsda faol qatnashdi» +10) */
+  rules: { pts: number; label: string }[];
 };
 
 export const DEFAULT_POINTS: PointsCfg = {
@@ -27,6 +29,7 @@ export const DEFAULT_POINTS: PointsCfg = {
   late2_max: 30,
   window_after_min: 60,
   goals: [],
+  rules: [],
 };
 
 export type Course = { id: number; platform_id: number; title: string; description: string; points: PointsCfg; category: string; lang: string };

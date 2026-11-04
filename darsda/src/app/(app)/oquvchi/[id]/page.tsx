@@ -10,7 +10,7 @@ import { Roadmap, RoadLegend } from "@/components/Roadmap";
 import { road, studentCtx } from "@/lib/student";
 import { getBrand } from "@/lib/platform";
 import { ActionForm, Submit } from "@/components/Form";
-import { addBonus, deleteBonus, markAttendance, nudge, toggleActive, updateStudent } from "@/app/actions/staff";
+import { addBonus, deleteBonus, markAttendance, nudge, quickBonus, toggleActive, updateStudent } from "@/app/actions/staff";
 
 export default async function Oquvchi({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ p?: string }> }) {
   const { id } = await params;
@@ -115,6 +115,15 @@ export default async function Oquvchi({ params, searchParams }: { params: Promis
 
       <div className="card">
         <h2 className="h2">Bonus / jarima ball</h2>
+        {course.points.rules.length > 0 && (
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            {course.points.rules.map((r, i) => (
+              <ActBtn key={i} action={quickBonus} fields={{ user_id: s.id, points: r.pts, note: r.label }} className={`pill ${r.pts > 0 ? "ok" : "bad"}`} style={{ border: 0, padding: "7px 11px", cursor: "pointer" }}>
+                {r.pts > 0 ? "+" : ""}{r.pts} · {r.label}
+              </ActBtn>
+            ))}
+          </div>
+        )}
         <ActionForm action={addBonus} reset>
           <input type="hidden" name="user_id" value={s.id} />
           <div className="row" style={{ gap: 8 }}>

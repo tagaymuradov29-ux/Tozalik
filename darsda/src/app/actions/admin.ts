@@ -131,6 +131,9 @@ export async function saveCourse(_: FormState, fd: FormData): Promise<FormState>
     if (v !== null && v !== "") (points as Record<string, unknown>)[k] = Number(v);
   }
   points.goals = goals as typeof points.goals;
+  points.rules = String(fd.get("rules") || "").split("\n").map((l) => l.trim()).filter(Boolean)
+    .map((l) => { const m = l.replace(/^−/, "-").match(/^([+\-]?)\s*(\d+)\s*[—–:-]?\s*(.+)$/); return m ? { pts: (m[1] === "-" ? -1 : 1) * Number(m[2]), label: m[3].slice(0, 80) } : null; })
+    .filter((x): x is { pts: number; label: string } => !!x && x.pts !== 0 && Math.abs(x.pts) <= 500).slice(0, 30);
   const cat = CATEGORIES.some((x) => x.key === fd.get("category")) ? String(fd.get("category")) : c.category;
   const lang = cat === "til" ? (LANGS.some((x) => x.key === fd.get("lang")) ? String(fd.get("lang")) : c.lang || "en") : "";
   await sql`update courses set title = ${title}, description = ${String(fd.get("description") || "")}, points = ${sql.json(points)}, category = ${cat}, lang = ${lang} where id = ${c.id}`;

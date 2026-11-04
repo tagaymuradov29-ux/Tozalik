@@ -1,13 +1,13 @@
 import "server-only";
 import { sql } from "./db";
 
-export type Word = { id: number; lesson_id: number | null; word: string; tr: string; translit: string; example: string; ln: number | null };
-export type WordP = Word & { box: number | null; due_at: Date | null; pron: number | null };
+export type Word = { id: number; lesson_id: number | null; word: string; tr: string; translit: string; example: string; image: string; ln: number | null };
+export type WordP = Word & { box: number | null; due_at: Date | null; pron: number | null; unknown: boolean | null };
 
 /** Kursdagi so'zlar va o'quvchining holati. Faqat boshlangan darslar (yoki darsga bog'lanmagan) so'zlari */
 export async function wordsFor(courseId: number, uid: number, lessonId = 0, onlyOpen = true) {
   return sql<WordP[]>`
-    select v.id, v.lesson_id, v.word, v.tr, v.translit, v.example, l.n as ln, p.box, p.due_at, p.pron
+    select v.id, v.lesson_id, v.word, v.tr, v.translit, v.example, v.image, l.n as ln, p.box, p.due_at, p.pron, p.unknown
     from vocab v left join lessons l on l.id = v.lesson_id
     left join vocab_progress p on p.vocab_id = v.id and p.user_id = ${uid}
     where v.course_id = ${courseId} and (${lessonId} = 0 or v.lesson_id = ${lessonId})
@@ -22,7 +22,7 @@ export function stats(ws: WordP[]) {
   const fresh = ws.filter((w) => !w.box).length;
   const due = ws.filter((w) => (w.box ?? 0) >= 1 && w.box! < 6 && new Date(w.due_at!).getTime() <= now).length;
   const pr = ws.filter((w) => w.pron !== null);
-  return { total: ws.length, learned, fresh, due, pron: pr.length ? Math.round(pr.reduce((s, w) => s + (w.pron ?? 0), 0) / pr.length) : null };
+  return { total: ws.length, learned, fresh, due, unknown: ws.filter((w) => w.unknown).length, pron: pr.length ? Math.round(pr.reduce((s, w) => s + (w.pron ?? 0), 0) / pr.length) : null };
 }
 
 /** Kurator/admin uchun: har o'quvchining lug'at natijasi */

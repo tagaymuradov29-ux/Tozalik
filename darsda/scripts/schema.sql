@@ -284,3 +284,7 @@ create table if not exists vocab_progress (
   updated_at timestamptz not null default now(),
   primary key (user_id, vocab_id)
 );
+
+-- Lug'at: rasm va «Bilmagan so'zlarim» qutisi
+alter table vocab add column if not exists image text not null default '';
+alter table vocab_progress add column if not exists unknown boolean not null default false;

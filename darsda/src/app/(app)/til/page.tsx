@@ -68,6 +68,11 @@ export default async function Til() {
         <div className="grow"><div className="h3">So&apos;z kartochkalari</div><div className="tiny muted">{today ? `Bugun ${today} ta so'z: ${S.due} takrorlash, ${Math.min(S.fresh, 10)} yangi` : "Bugungi mashq bajarildi ✓"}</div></div>
         <span className="muted">›</span>
       </Link>
+      <Link href="/til/mashq?m=bilmagan" className="card row" style={{ gap: 12 }}>
+        <span style={{ fontSize: 28 }}>🔁</span>
+        <div className="grow"><div className="h3">Bilmagan so&apos;zlarim</div><div className="tiny muted">{S.unknown ? `${S.unknown} ta so'z — qayta takrorlang` : "Hozircha yo'q — «Bilmadim» desangiz shu yerga tushadi"}</div></div>
+        <span className={`pill ${S.unknown ? "bad" : ""}`}>{S.unknown}</span>
+      </Link>
       <Link href="/til/talaffuz" className="card row" style={{ gap: 12 }}>
         <span style={{ fontSize: 28 }}>🎙</span>
         <div className="grow"><div className="h3">Talaffuz</div><div className="tiny muted">Eshiting, ayting — telefon tekshiradi va ball qo&apos;yadi</div></div>
