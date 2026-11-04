@@ -4,20 +4,26 @@ import { ActionForm, Submit } from "./Form";
 import { FlightPreview } from "./Flight";
 import { saveDesign } from "@/app/actions/build";
 import { COLORS, FONTS, JOURNEYS } from "@/lib/journeys";
+import { ROAD_CHOICES, roadSvg, roadTheme, type RoadState } from "@/lib/roadmapSvg";
+
+const SAMPLE = Array.from({ length: 6 }, (_, i) => ({ id: i + 1, n: i + 1, title: "", date: "" }));
+const SAMPLE_ST: RoadState[] = ["done", "done", "debt", "current", "locked", "locked"];
 
 const ff = (f: string) => (f ? `"${f}", system-ui, sans-serif` : "var(--font)");
 
-export function DesignForm({ color, font, journey, tint }: { color: string; font: string; journey: string; tint: boolean }) {
+export function DesignForm({ color, font, journey, tint, road }: { color: string; font: string; journey: string; tint: boolean; road: string }) {
   const [c, setC] = useState(color);
   const [f, setF] = useState(font);
   const [j, setJ] = useState(journey);
   const [tn, setTn] = useState(tint);
-  const [tab, setTab] = useState<"rang" | "shrift" | "anim">("rang");
+  const [rd, setRd] = useState(road);
+  const [tab, setTab] = useState<"rang" | "shrift" | "anim" | "xarita">("rang");
   return (
     <ActionForm action={saveDesign}>
       <input type="hidden" name="color" value={c} />
       <input type="hidden" name="font" value={f} />
       <input type="hidden" name="journey" value={j} />
+      <input type="hidden" name="road" value={rd} />
 
       {/* Jonli namuna */}
       <div className="card tight" style={{ fontFamily: ff(f), background: tn ? `color-mix(in srgb, ${c} 7%, var(--sunk))` : "var(--sunk)" }}>
@@ -29,7 +35,7 @@ export function DesignForm({ color, font, journey, tint }: { color: string; font
       </div>
 
       <div className="row" style={{ gap: 6 }}>
-        {([["rang", "🎨 Rang"], ["shrift", "🔤 Shrift"], ["anim", "🚀 Animatsiya"]] as const).map(([k, t]) => (
+        {([["rang", "🎨 Rang"], ["shrift", "🔤 Shrift"], ["xarita", "🗺 Xarita"], ["anim", "🚀 Animatsiya"]] as const).map(([k, t]) => (
           <button key={k} type="button" className={`pill ${tab === k ? "ok" : ""}`} style={{ padding: "8px 12px" }} onClick={() => setTab(k)}>{t}</button>
         ))}
       </div>
@@ -67,6 +73,19 @@ export function DesignForm({ color, font, journey, tint }: { color: string; font
                 <span style={{ fontFamily: ff(x.family), fontSize: 17, fontWeight: 600 }}>Salom, o&apos;quvchi! Аа Ўў 123</span>
               </div>
               {f === x.key && <span style={{ color: "var(--brand)", fontWeight: 700 }}>✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "xarita" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {ROAD_CHOICES.map((k) => (
+            <button key={k} type="button" onClick={() => setRd(k)} className="stack"
+              style={{ gap: 6, padding: 5, borderRadius: 14, border: `2px solid ${rd === k ? c : "var(--line)"}`, background: "var(--card)", cursor: "pointer", font: "inherit", color: "inherit" }}>
+              <div style={{ height: 300, overflow: "hidden", borderRadius: 10, lineHeight: 0 }}
+                dangerouslySetInnerHTML={{ __html: roadSvg({ lessons: SAMPLE, states: SAMPLE_ST, here: 3, theme: k, uid: "pv" + k, labels: false, links: false, youLabel: "Siz" }) }} />
+              <span className="tiny" style={{ fontWeight: 700 }}>{roadTheme(k).name}{rd === k ? " ✓" : ""}</span>
             </button>
           ))}
         </div>

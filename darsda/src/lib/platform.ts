@@ -22,6 +22,7 @@ export type Settings = {
   font?: string;          // FONTS dagi kalit ("" — standart)
   journey?: string;       // ballar animatsiyasi varianti (JOURNEYS)
   tint?: boolean;         // fon platforma rangida biroz bo'yalgan
+  road?: string;          // yo'l xaritasi manzarasi (ROAD_CHOICES)
 };
 
 export type Brand = { id: number; slug: string; name: string; color: string; settings: Settings };

@@ -145,7 +145,7 @@ async function StudentHome({ u }: { u: User }) {
           <span className="tiny muted">{R.closed} ta dars yopilgan</span>
         </div>
         <RoadLegend />
-        <Roadmap lessons={lessons} states={R.states} here={R.here} tz={u.tz} />
+        <Roadmap lessons={lessons} states={R.states} here={R.here} tz={u.tz} theme={b?.settings.road} />
       </div>
 
       <Extras u={u} courseId={course.id} b={b} />

@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { getBrand, MODS, okColor, type Settings } from "@/lib/platform";
 import { seedDemoCourse } from "@/lib/demo";
 import { FONTS, JOURNEYS } from "@/lib/journeys";
+import { ROAD_CHOICES } from "@/lib/roadmapSvg";
 import { CATEGORIES, LANGS, STARTER } from "@/lib/lang";
 import { localToUtc } from "@/lib/util";
 import type { FormState } from "./auth";
@@ -65,6 +66,7 @@ export async function saveDesign(_: FormState, fd: FormData): Promise<FormState>
     font: FONTS.some((f) => f.key === font) ? font : "",
     journey: JOURNEYS.some((j) => j.key === jr) ? jr : "kosmos",
     tint: fd.get("tint") === "on",
+    road: ROAD_CHOICES.includes(String(fd.get("road"))) ? String(fd.get("road")) : "bahor",
   };
   await sql`update platforms set color = ${okColor(String(fd.get("color")))}, settings = ${sql.json(settings)} where id = ${b.id}`;
   revalidatePath("/", "layout");

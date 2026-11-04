@@ -33,3 +33,19 @@ export function listen(lang: string): Promise<string[]> {
     setTimeout(() => { try { r.stop(); } catch {} }, 6000);
   });
 }
+
+/** O'qib berish va tugashini kutish (robot gapirayotganini ko'rsatish uchun) */
+export function speakWait(text: string, lang: string, rate = 0.9): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return resolve();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang; u.rate = rate;
+    const v = speechSynthesis.getVoices().find((x) => x.lang.replace("_", "-").toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
+    if (v) u.voice = v;
+    const done = () => resolve();
+    u.onend = done; u.onerror = done;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+    setTimeout(done, Math.min(12000, 1500 + text.length * 90));
+  });
+}

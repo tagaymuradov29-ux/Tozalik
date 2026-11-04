@@ -80,11 +80,11 @@ export default async function Til() {
           <span className="muted">›</span>
         </Link>
       )}
-      <div className="card row" style={{ gap: 12, opacity: 0.7 }}>
+      <Link href="/til/suhbat" className="card row" style={{ gap: 12, background: "linear-gradient(135deg, var(--brand-soft), var(--card))" }}>
         <span style={{ fontSize: 28 }}>🤖</span>
-        <div className="grow"><div className="h3">AI bilan suhbat</div><div className="tiny muted">Jonli speaking va Telegram&apos;da ovozli mashq — tez orada</div></div>
-        <span className="pill">tez orada</span>
-      </div>
+        <div className="grow"><div className="h3">AI bilan suhbat</div><div className="tiny muted">Robot o&apos;qituvchi bilan razgovor: tanishuv, kafe, aeroport</div></div>
+        <span className="muted">›</span>
+      </Link>
     </main>
   );
 }

@@ -8,6 +8,7 @@ import { Head, StateBadge, Avatar, ActBtn } from "@/components/ui";
 import { PointsCard } from "@/components/PointsCard";
 import { Roadmap, RoadLegend } from "@/components/Roadmap";
 import { road, studentCtx } from "@/lib/student";
+import { getBrand } from "@/lib/platform";
 import { ActionForm, Submit } from "@/components/Form";
 import { addBonus, deleteBonus, markAttendance, nudge, toggleActive, updateStudent } from "@/app/actions/staff";
 
@@ -57,7 +58,7 @@ export default async function Oquvchi({ params, searchParams }: { params: Promis
             <span className={`pill ${R.debts ? "bad" : "ok"}`}>{R.closed}/{R.opened} yopilgan{R.debts ? ` · ${R.debts} qarz` : ""}</span>
           </div>
           <RoadLegend />
-          <Roadmap lessons={ctx.lessons} states={R.states} here={R.here} tz={u.tz} />
+          <Roadmap lessons={ctx.lessons} states={R.states} here={R.here} tz={u.tz} theme={(await getBrand(u.platform_id))?.settings.road} />
         </div>
       )}
       {u.role !== "student" && (
