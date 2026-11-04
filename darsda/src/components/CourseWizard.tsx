@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ActionForm, Submit } from "./Form";
 import { newCourse } from "@/app/actions/build";
+import { CATEGORIES, LANGS } from "@/lib/lang";
 
 const DAYS = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
 const MODES = [
@@ -12,19 +13,54 @@ const MODES = [
 
 export function CourseWizard({ courses, today }: { courses: { id: number; title: string }[]; today: string }) {
   const [mode, setMode] = useState(courses.length ? "copy" : "schedule");
+  const [cat, setCat] = useState("");
+  const [lang, setLang] = useState("en");
+  const chip = (on: boolean) => ({ textAlign: "left" as const, borderRadius: 12, padding: "10px 12px", border: `2px solid ${on ? "var(--brand)" : "var(--line)"}`, background: on ? "var(--brand-soft)" : "var(--card)", cursor: "pointer", font: "inherit", color: "inherit" });
+  // 1-qadam: yo'nalish
+  if (!cat) return (
+    <div className="stack" style={{ gap: 8 }}>
+      <b>Qaysi yo&apos;nalishda kurs qilasiz?</b>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        {CATEGORIES.map((x) => (
+          <button key={x.key} type="button" onClick={() => { setCat(x.key); if (x.key !== "marketing" && mode === "rm6") setMode("schedule"); }} className="stack" style={{ ...chip(false), gap: 2 }}>
+            <span style={{ fontSize: 26 }}>{x.emoji}</span><b>{x.name}</b><span className="tiny muted">{x.about}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
   return (
     <ActionForm action={newCourse}>
       <input type="hidden" name="mode" value={mode} />
+      <input type="hidden" name="category" value={cat} />
+      <input type="hidden" name="lang" value={lang} />
+      <div className="row between">
+        <span className="pill ok">{CATEGORIES.find((x) => x.key === cat)?.emoji} {CATEGORIES.find((x) => x.key === cat)?.name}</span>
+        <button type="button" className="btn sm ghost" onClick={() => setCat("")}>O&apos;zgartirish</button>
+      </div>
+      {cat === "til" && (
+        <div className="field">
+          <span>Qaysi til?</span>
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            {LANGS.map((l) => (
+              <button key={l.key} type="button" className={`pill ${lang === l.key ? "ok" : ""}`} style={{ padding: "8px 12px" }} onClick={() => setLang(l.key)}>{l.flag} {l.name}</button>
+            ))}
+          </div>
+          <span className="tiny muted">Til kursiga avtomatik qo&apos;shiladi: lug&apos;at va so&apos;z kartochkalari, talaffuz tekshiruvi{lang === "ar" ? ", arab alifbosi (28 harf, harakatlar)" : ""}, keyinroq — AI bilan suhbat.</span>
+        </div>
+      )}
       <div className="stack" style={{ gap: 6 }}>
-        {MODES.filter((m) => m.k !== "copy" || courses.length).map((m) => (
-          <button key={m.k} type="button" onClick={() => setMode(m.k)} className="li" aria-pressed={mode === m.k}
-            style={{ textAlign: "left", borderRadius: 12, padding: "10px 12px", border: `2px solid ${mode === m.k ? "var(--brand)" : "var(--line)"}`, background: mode === m.k ? "var(--brand-soft)" : "var(--card)", cursor: "pointer", font: "inherit", color: "inherit" }}>
+        {MODES.filter((m) => (m.k !== "copy" || courses.length) && (m.k !== "rm6" || cat === "marketing")).map((m) => (
+          <button key={m.k} type="button" onClick={() => setMode(m.k)} className="li" aria-pressed={mode === m.k} style={chip(mode === m.k)}>
             <div className="stack" style={{ gap: 2 }}><b>{m.t}</b><span className="tiny muted">{m.d}</span></div>
           </button>
         ))}
       </div>
 
-      <label className="field"><span>Kurs nomi</span><input className="input" name="title" placeholder="Masalan: SMM Pro 3.0" required /></label>
+      <label className="field"><span>Kurs nomi</span><input className="input" name="title" placeholder={cat === "til" ? "Masalan: IELTS 7.0 · 1-oqim" : "Masalan: SMM Pro 3.0"} required /></label>
+      {cat === "til" && mode !== "rm6" && (
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" name="starter" defaultChecked /> <span className="small">20 ta boshlang&apos;ich so&apos;z qo&apos;shilsin (namuna, keyin o&apos;zgartirasiz)</span></label>
+      )}
 
       {mode === "copy" && (
         <label className="field"><span>Qaysi kursdan nusxa olinadi</span>

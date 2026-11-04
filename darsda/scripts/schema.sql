@@ -252,3 +252,33 @@ create table if not exists app_meta (
 
 -- Platforma sozlamalari (konstruktor): logo, salomlashuv matni, yoqilgan modullar va ularning nomlari
 alter table platforms add column if not exists settings jsonb not null default '{}';
+
+-- Kurs yo'nalishi: til, marketing, ... va til kurslari uchun til kodi (en, ru, ar, tr ...)
+alter table courses add column if not exists category text not null default 'boshqa';
+alter table courses add column if not exists lang text not null default '';
+update courses set category = 'marketing' where category = 'boshqa' and title ilike '%marketing%';
+
+-- Til paketi: lug'at va har o'quvchining takrorlash holati (Leitner qutilari)
+create table if not exists vocab (
+  id serial primary key,
+  course_id int not null references courses(id) on delete cascade,
+  lesson_id int references lessons(id) on delete set null,
+  word text not null,
+  tr text not null default '',
+  translit text not null default '',
+  example text not null default '',
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists vocab_course on vocab (course_id, lesson_id);
+create table if not exists vocab_progress (
+  user_id int not null references users(id) on delete cascade,
+  vocab_id int not null references vocab(id) on delete cascade,
+  box int not null default 0,
+  due_at timestamptz not null default now(),
+  right_n int not null default 0,
+  wrong_n int not null default 0,
+  pron int,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, vocab_id)
+);

@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { getBrand, MODS, okColor, type Settings } from "@/lib/platform";
 import { seedDemoCourse } from "@/lib/demo";
 import { FONTS, JOURNEYS } from "@/lib/journeys";
+import { CATEGORIES, LANGS, STARTER } from "@/lib/lang";
 import { localToUtc } from "@/lib/util";
 import type { FormState } from "./auth";
 
@@ -78,6 +79,8 @@ export async function newCourse(_: FormState, fd: FormData): Promise<FormState> 
   if (!title) return { error: "Kurs nomini yozing" };
   const date = String(fd.get("date") || "");
   const time = /^\d\d:\d\d$/.test(String(fd.get("time"))) ? String(fd.get("time")) : "18:00";
+  const cat = CATEGORIES.some((x) => x.key === fd.get("category")) ? String(fd.get("category")) : "boshqa";
+  const lang = cat === "til" ? (LANGS.some((x) => x.key === fd.get("lang")) ? String(fd.get("lang")) : "en") : "";
   let courseId = 0;
 
   if (mode === "rm6") {
@@ -110,6 +113,12 @@ export async function newCourse(_: FormState, fd: FormData): Promise<FormState> 
         from tasks t left join (select (e->>0)::int as old_id, (e->>1)::int as new_id from jsonb_array_elements(${sql.json([...map.entries()])}::jsonb) e) m
           on m.old_id = t.lesson_id
         where t.course_id = ${src}`;
+      // Lug'at ham ko'chadi
+      await tx`insert into vocab (course_id, lesson_id, word, tr, translit, example, position)
+        select ${c.id}, m.new_id, v.word, v.tr, v.translit, v.example, v.position
+        from vocab v left join (select (e->>0)::int as old_id, (e->>1)::int as new_id from jsonb_array_elements(${sql.json([...map.entries()])}::jsonb) e) m
+          on m.old_id = v.lesson_id
+        where v.course_id = ${src}`;
       await tx`insert into groups (platform_id, course_id, name) values (${b.id}, ${c.id}, '1-guruh')`;
     });
   } else {
@@ -141,9 +150,15 @@ export async function newCourse(_: FormState, fd: FormData): Promise<FormState> 
         values (${c.id}, ${l.id}, ${`Amaliy: ${n}-dars topshirig'i`}, 'file', 'Topshiriqni bajarib, fayl, rasm yoki havola ko''rinishida yuboring.', 50, 40, ${end}, ${new Date(end.getTime() + 7 * 86400000)}, 3)`;
     }
   }
+  await sql`update courses set category = ${mode === "rm6" ? "marketing" : cat}, lang = ${mode === "rm6" ? "" : lang} where id = ${courseId}`;
+  // Til kursi: boshlang'ich so'zlar (namuna) — admin keyin o'zinikini qo'shadi yoki o'chiradi
+  if (cat === "til" && mode !== "rm6" && fd.get("starter") === "on" && STARTER[lang]) {
+    const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from vocab where course_id = ${courseId}`;
+    if (!n) await sql`insert into vocab ${sql(STARTER[lang].map(([word, tr, translit], i) => ({ course_id: courseId, lesson_id: null, word, tr, translit, example: "", position: i })))}`;
+  }
   (await cookies()).set("course", String(courseId), { path: "/", maxAge: 31536000 });
   revalidatePath("/", "layout");
-  redirect("/darslar");
+  redirect(cat === "til" && mode !== "rm6" ? "/til" : "/darslar");
 }
 
 export async function deleteCourse(fd: FormData) {

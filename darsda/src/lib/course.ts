@@ -29,7 +29,7 @@ export const DEFAULT_POINTS: PointsCfg = {
   goals: [],
 };
 
-export type Course = { id: number; platform_id: number; title: string; description: string; points: PointsCfg };
+export type Course = { id: number; platform_id: number; title: string; description: string; points: PointsCfg; category: string; lang: string };
 export type Lesson = {
   id: number; course_id: number; n: number; title: string; speaker: string; starts_at: Date;
   duration_min: number; video_url: string; content: string; materials: { title: string; url: string }[];

@@ -5,6 +5,7 @@ import { getBrand, label, on } from "@/lib/platform";
 import { Head } from "@/components/ui";
 import { ActionForm, Submit } from "@/components/Form";
 import { saveCourse } from "@/app/actions/admin";
+import { CATEGORIES, LANGS } from "@/lib/lang";
 
 const PF: [keyof typeof DEFAULT_POINTS, string][] = [
   ["att_ontime", "Vaqtida kelsa"],
@@ -30,6 +31,14 @@ export default async function Ballar() {
           <h2 className="h2">Kurs</h2>
           <label className="field"><span>Kurs nomi</span><input className="input" name="title" defaultValue={c.title} /></label>
           <label className="field"><span>Qisqa tavsif</span><textarea className="input" name="description" defaultValue={c.description} rows={2} /></label>
+          <div className="grid2">
+            <label className="field"><span>Yo&apos;nalish</span>
+              <select className="input" name="category" defaultValue={c.category}>{CATEGORIES.map((x) => <option key={x.key} value={x.key}>{x.emoji} {x.name}</option>)}</select>
+            </label>
+            <label className="field"><span>Til (til kursi uchun)</span>
+              <select className="input" name="lang" defaultValue={c.lang}><option value="">—</option>{LANGS.map((x) => <option key={x.key} value={x.key}>{x.flag} {x.name}</option>)}</select>
+            </label>
+          </div>
         </div>
 
         <div className="card">

@@ -47,6 +47,7 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
                (select count(*)::int from attendance where lesson_id = ${l.id} and status in ('ontime','late')) as came`
     : [];
   const locked = isStudent && !started;
+  const [{ words }] = course.category === "til" ? await sql<{ words: number }[]>`select count(*)::int as words from vocab where lesson_id = ${l.id}` : [{ words: 0 }];
 
   return (
     <main className="page">
@@ -64,6 +65,18 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
             <Video url={l.video_url} lessonId={l.id} start={vp?.position ?? 0} done={!!vp?.done} track={isStudent} />
           ) : (
             started && <div className="card tight sub small">Dars yozuvi hali joylanmagan.</div>
+          )}
+
+          {course.category === "til" && (words > 0 || u.role === "admin") && (
+            <div className="card">
+              <div className="row between"><h2 className="h2">📚 Dars so&apos;zlari</h2><span className="pill">{words} ta</span></div>
+              {isStudent ? (
+                <div className="grid2">
+                  <Link href={`/til/mashq?l=${l.id}`} className="btn soft">🃏 Kartochkalar</Link>
+                  <Link href={`/til/talaffuz?l=${l.id}`} className="btn soft">🎙 Talaffuz</Link>
+                </div>
+              ) : <Link href={`/til/sozlar?l=${l.id}`} className="btn soft full">{words ? "So'zlarni ko'rish va qo'shish" : "+ Shu darsga so'z qo'shish"}</Link>}
+            </div>
           )}
 
           {prog && prog.items.length > 0 && (

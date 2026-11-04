@@ -6,6 +6,7 @@ import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { currentCourse, DEFAULT_POINTS, type Workbook } from "@/lib/course";
 import { localToUtc } from "@/lib/util";
+import { CATEGORIES, LANGS } from "@/lib/lang";
 import type { FormState } from "./auth";
 
 async function adminCourse() {
@@ -130,7 +131,9 @@ export async function saveCourse(_: FormState, fd: FormData): Promise<FormState>
     if (v !== null && v !== "") (points as Record<string, unknown>)[k] = Number(v);
   }
   points.goals = goals as typeof points.goals;
-  await sql`update courses set title = ${title}, description = ${String(fd.get("description") || "")}, points = ${sql.json(points)} where id = ${c.id}`;
+  const cat = CATEGORIES.some((x) => x.key === fd.get("category")) ? String(fd.get("category")) : c.category;
+  const lang = cat === "til" ? (LANGS.some((x) => x.key === fd.get("lang")) ? String(fd.get("lang")) : c.lang || "en") : "";
+  await sql`update courses set title = ${title}, description = ${String(fd.get("description") || "")}, points = ${sql.json(points)}, category = ${cat}, lang = ${lang} where id = ${c.id}`;
   revalidatePath("/", "layout");
   return { ok: "Saqlandi" };
 }

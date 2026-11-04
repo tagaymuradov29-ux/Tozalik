@@ -8,6 +8,8 @@ import { journal } from "@/lib/progress";
 import { flightData, skyData } from "@/lib/space";
 import { getBrand, label, on, type Brand } from "@/lib/platform";
 import { journey } from "@/lib/journeys";
+import { stats as wstats, wordsFor } from "@/lib/til";
+import { langOf } from "@/lib/lang";
 import { SkyMini } from "@/components/Sky";
 import { fmtDay, fmtTime } from "@/lib/util";
 import { Head, Progress, RowLink, Avatar } from "@/components/ui";
@@ -48,6 +50,8 @@ async function StudentHome({ u }: { u: User }) {
   const b = await getBrand(u.platform_id);
   const [rank, F, K] = await Promise.all([ranking(course, u.group_id), flightData(ctx, u.id), on(b, "osmon") ? skyData(u, course) : null]);
   const R = road(ctx);
+  const TS = course.category === "til" ? wstats(await wordsFor(course.id, u.id)) : null;
+  const TL = langOf(course.lang);
   const sat = F.A.filter((a) => a.st === "done").length;
   const me = rank.find((r) => r.id === u.id);
   const goal = course.points.goals.find((g) => (me?.total ?? 0) < g.pts) ?? course.points.goals.at(-1);
@@ -115,6 +119,16 @@ async function StudentHome({ u }: { u: User }) {
         </div>
       )}
 
+      {TS && (
+        <Link href="/til" className="card row" style={{ gap: 12, background: TS.due + TS.fresh ? "var(--brand-soft)" : undefined }}>
+          <span style={{ fontSize: 30 }}>{TL?.flag ?? "🗣️"}</span>
+          <div className="grow">
+            <div className="h3">{TL?.name ?? "Til"} mashqlari</div>
+            <div className="tiny muted">{TS.due + Math.min(TS.fresh, 10) ? `Bugun ${TS.due + Math.min(TS.fresh, 10)} ta so'z · ` : "Bugungi mashq bajarildi ✓ · "}{TS.learned}/{TS.total} yodlangan{TS.pron != null ? ` · talaffuz ${TS.pron}` : ""}</div>
+          </div>
+          <span className="muted">›</span>
+        </Link>
+      )}
       {on(b, "parvoz") && <Link href="/parvoz" className="card space-card flight" style={{ background: `linear-gradient(135deg, ${journey(b?.settings.journey).banner[0]}, ${journey(b?.settings.journey).banner[1]})` }}>
         <span className="emo">{journey(b?.settings.journey).emoji}</span>
         <div className="grow">
@@ -179,6 +193,13 @@ async function StaffHome({ u }: { u: User }) {
   return (
     <main className="page">
       <Head title="Bugun" right={<Bell name={u.name} />} sub={`${course.title} · ${u.role === "admin" ? "Administrator" : "Kurator"}`} />
+      {course.category === "til" && (
+        <Link href="/til" className="card row" style={{ gap: 12 }}>
+          <span style={{ fontSize: 26 }}>{langOf(course.lang)?.flag ?? "🗣️"}</span>
+          <div className="grow"><div className="h3">Til paketi</div><div className="tiny muted">Lug&apos;at, o&apos;quvchilar yodlagan so&apos;zlar va talaffuz natijalari</div></div>
+          <span className="muted">›</span>
+        </Link>
+      )}
       {u.role === "admin" && (
         <Link href="/sozlash" className="card row" style={{ gap: 12, background: "var(--brand-soft)" }}>
           <span style={{ fontSize: 24 }}>⚙️</span>

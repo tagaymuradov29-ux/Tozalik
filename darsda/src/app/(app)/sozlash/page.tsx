@@ -14,8 +14,9 @@ export default async function Sozlash() {
   if (u.role !== "admin") redirect("/");
   const [b, c] = await Promise.all([getBrand(u.platform_id), currentCourse(u)]);
   if (!b) redirect("/");
-  const [s] = await sql<{ lessons: number; tasks: number; groups: number; curated: number; students: number; invites: number; courses: number }[]>`
+  const [s] = await sql<{ words: number; lessons: number; tasks: number; groups: number; curated: number; students: number; invites: number; courses: number }[]>`
     select
+      (select count(*)::int from vocab where course_id = ${c?.id ?? 0}) as words,
       (select count(*)::int from lessons where course_id = ${c?.id ?? 0}) as lessons,
       (select count(*)::int from tasks where course_id = ${c?.id ?? 0}) as tasks,
       (select count(*)::int from groups where course_id = ${c?.id ?? 0}) as groups,
@@ -29,6 +30,7 @@ export default async function Sozlash() {
     { href: "/sozlash/brend", emoji: "🏷️", t: "Brend", d: "Nom, logo va o'quvchilar kiradigan havola", ok: !!b.settings.logo || b.name.length > 1 },
     { href: "/sozlash/dizayn", emoji: "🎨", t: "Dizayn", d: `Rang, shrift (${FONTS.find((f) => f.key === (b.settings.font ?? ""))?.name ?? "Standart"}) va animatsiya: ${journey(b.settings.journey).title}`, ok: !!(b.settings.journey || b.settings.font) || b.color.toLowerCase() !== "#0b5d46" },
     { href: "/sozlash/kurs", emoji: "📚", t: "Kurs tuzilmasi", d: c ? `«${c.title}» · ${s.courses} ta kurs` : "Kurs yarating: jadval, namuna yoki nusxa", ok: !!c },
+    ...(c?.category === "til" ? [{ href: "/til/sozlar", emoji: "📚", t: "Til paketi: lug'at", d: `${s.words} ta so'z — darslarga biriktiring, talaffuz va kartochkalar shundan tuziladi`, ok: s.words > 0 }] : []),
     { href: "/darslar", emoji: "🎬", t: "Darslar va vazifalar", d: `${s.lessons} ta dars · ${s.tasks} ta vazifa — mavzu, video, material, muddat`, ok: s.lessons > 0 && s.tasks > 0 },
     { href: "/sozlash/ballar", emoji: "🎯", t: "Ball tizimi va maqsadlar", d: goals ? `${goals} ta maqsad · davomat ballari` : "Davomat ballari, mukofot maqsadlari", ok: goals > 0 },
     { href: "/sozlash/modullar", emoji: "🧩", t: "Modullar", d: `${mods}/${MODS.length} ta yoqilgan — keraklisini qoldiring, nomini o'zgartiring`, ok: true },
