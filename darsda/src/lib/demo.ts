@@ -164,3 +164,22 @@ export async function seedDemoNet(courseId: number) {
   }
   return true;
 }
+
+/** Namuna video statistikasi: videoli darsda o'quvchilar har xil joyda to'xtagan (analitika bo'sh ko'rinmasligi uchun). Bir marta. */
+export async function seedDemoVideo(courseId: number) {
+  const [l] = await sql<{ id: number }[]>`select id from lessons where course_id = ${courseId} and video_url <> '' and starts_at <= now() order by n limit 1`;
+  if (!l) return false;
+  const [ex] = await sql`select 1 from video_progress where lesson_id = ${l.id} limit 1`;
+  if (ex) return false;
+  const st = await sql<{ id: number }[]>`select u.id from users u join groups g on g.id = u.group_id where g.course_id = ${courseId} and u.role = 'student' and u.active order by u.id`;
+  const dur = 596;
+  const plan = [100, 100, 92, 78, 66, 64, 61, 58, 100, 35, 71, 100, 12, 67, 88, 100, 63, 0, 54, 100, 69];
+  for (const [i, s] of st.entries()) {
+    const p = plan[i % plan.length];
+    if (!p) continue;
+    const pos = Math.round((dur * p) / 100);
+    await sql`insert into video_progress (user_id, lesson_id, position, duration, max_pos, done) values (${s.id}, ${l.id}, ${pos}, ${dur}, ${pos}, ${p >= 100})
+      on conflict do nothing`;
+  }
+  return true;
+}

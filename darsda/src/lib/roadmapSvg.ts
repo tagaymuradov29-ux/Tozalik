@@ -198,9 +198,11 @@ export function roadSvg(o: { lessons: RoadLesson[]; states: RoadState[]; here: n
       : st === "locked" ? `<path d="M${f(x - 6)} ${f(y - 1)}h12v9h-12z M${f(x - 4)} ${f(y - 1)}v-3a4 4 0 0 1 8 0v3" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`
       : `<text x="${f(x)}" y="${f(y + 6.5)}" font-size="19" font-weight="800" fill="#fff" text-anchor="middle" font-family="Inter,system-ui,sans-serif">${st === "debt" ? "!" : l.n}</text>`;
     out.push(o.links === false ? `<g>` : `<a href="${esc((o.hrefBase ?? "/darslar/") + l.id)}" class="nr-node" role="listitem" aria-label="${esc(`${l.n}-dars, ${l.title}`)}"><g>`);
+    if (o.labels !== false) out.push(`<g class="nr-lbl">`);
     if (o.labels !== false) out.push(`<rect x="${f(lx)}" y="${f(y - 22)}" width="${f(lw)}" height="40" rx="11" fill="${T.label}" opacity="${st === "locked" ? 0.82 : 0.96}" style="filter:drop-shadow(0 2px 3px rgba(0,0,0,.12))"/>`);
     if (o.labels !== false) out.push(`<text x="${f(tx)}" y="${f(y - 7)}" text-anchor="${anchor}" font-size="10" font-weight="700" fill="${T.sub}" font-family="Inter,system-ui,sans-serif">${l.n}-dars · ${esc(l.date)}</text>`);
     if (o.labels !== false) out.push(`<text x="${f(tx)}" y="${f(y + 9)}" text-anchor="${anchor}" font-size="12" font-weight="700" fill="${T.ink}" font-family="Inter,system-ui,sans-serif">${esc(title)}</text>`);
+    if (o.labels !== false) out.push(`</g>`);
     out.push(`<ellipse cx="${f(x)}" cy="${f(y + 24)}" rx="22" ry="5.5" fill="#000" opacity=".18"/>`);
     if (isHere) out.push(`<circle cx="${f(x)}" cy="${f(y)}" r="27" fill="none" stroke="${NODE[st][1]}" stroke-width="4" class="nr-pulse"/>`);
     out.push(`<circle cx="${f(x)}" cy="${f(y + 3)}" r="25" fill="${NODE[st][2]}"/><circle cx="${f(x)}" cy="${f(y)}" r="25" fill="url(#${id}n${st})"/><ellipse cx="${f(x - 7)}" cy="${f(y - 11)}" rx="9" ry="5" fill="#fff" opacity=".35"/>${glyph}`);

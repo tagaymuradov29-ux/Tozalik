@@ -113,6 +113,8 @@ export default async function LessonPage({ params }: { params: Promise<{ id: str
             </div>
           )}
 
+          {!isStudent && started && l.video_url && <VideoStats u={u} courseId={course.id} lessonId={l.id} />}
+
           {staffRows.length > 0 && (
             <div className="card">
               <div className="row between">
@@ -237,3 +239,54 @@ async function lessonStaff(u: Parameters<typeof scopeStudents>[0], course: NonNu
   }).sort((a, b) => (a.st === "debt" ? 0 : 1) - (b.st === "debt" ? 0 : 1));
 }
 
+
+const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
+
+/** 📊 Video darslar analitikasi: har o'quvchi videoning necha foizini ko'rdi va qayerda to'xtadi */
+async function VideoStats({ u, courseId, lessonId }: { u: Parameters<typeof scopeStudents>[0]; courseId: number; lessonId: number }) {
+  const students = await scopeStudents(u, courseId);
+  const rows = await sql<{ user_id: number; max_pos: number; duration: number; done: boolean }[]>`
+    select user_id, max_pos, duration, done from video_progress where lesson_id = ${lessonId} and user_id = any(${students.map((x) => x.id)})`;
+  const dur = Math.max(0, ...rows.map((r) => r.duration));
+  const list = students.map((st) => {
+    const r = rows.find((x) => x.user_id === st.id);
+    const pct = !r ? 0 : r.done ? 100 : r.duration ? Math.min(100, Math.round((r.max_pos / r.duration) * 100)) : 0;
+    return { ...st, pct, pos: r?.max_pos ?? 0, opened: !!r, done: !!r?.done || pct >= 95 };
+  }).sort((a, b) => b.pct - a.pct);
+  const opened = list.filter((x) => x.opened);
+  const avg = opened.length ? Math.round(opened.reduce((a, b) => a + b.pct, 0) / opened.length) : 0;
+  // Qayerda to'xtashdi: 10 ta bo'lak bo'yicha (to'liq ko'rganlar hisobga olinmaydi)
+  const buckets = Array.from({ length: 10 }, (_, k) => opened.filter((x) => !x.done && Math.min(9, Math.floor(x.pct / 10)) === k).length);
+  const peak = buckets.indexOf(Math.max(...buckets));
+  const mx = Math.max(1, ...buckets);
+  const col = (p: number) => (p >= 95 ? "var(--ok)" : p >= 60 ? "var(--amber)" : "var(--red)");
+  return (
+    <div className="card">
+      <div className="row between"><h2 className="h2">📊 Video: kim qancha ko&apos;rdi</h2><span className="tiny muted">{dur ? mmss(dur) : ""}</span></div>
+      <div className="grid3">
+        <div className="stat"><b>{avg}%</b><span className="tiny muted">o&apos;rtacha</span></div>
+        <div className="stat"><b>{opened.length}/{list.length}</b><span className="tiny muted">ochdi</span></div>
+        <div className="stat"><b>{list.filter((x) => x.done).length}</b><span className="tiny muted">oxirigacha</span></div>
+      </div>
+      {opened.length > 0 && (
+        <div className="stack" style={{ gap: 4 }}>
+          <span className="tiny muted">Qayerda to&apos;xtashdi{buckets[peak] ? ` — ko'pchilik ${peak * 10}–${peak * 10 + 10}% oralig'ida${dur ? ` (${mmss((dur * peak) / 10)}–${mmss((dur * (peak + 1)) / 10)})` : ""}` : ""}</span>
+          <div className="vdrop">{buckets.map((b, k) => <i key={k} style={{ height: `${8 + (b / mx) * 56}px`, background: k === peak && b ? "var(--red)" : "var(--brand)", opacity: b ? 1 : 0.25 }} />)}</div>
+          <div className="row between tiny muted"><span>0:00</span><span>{dur ? mmss(dur / 2) : "50%"}</span><span>{dur ? mmss(dur) : "100%"}</span></div>
+        </div>
+      )}
+      <div className="list">
+        {list.map((x) => (
+          <Link key={x.id} href={`/oquvchi/${x.id}`} className="li">
+            <Avatar name={x.name} size={30} />
+            <div className="grow stack" style={{ gap: 4 }}>
+              <div className="row between"><span className="small trunc" style={{ fontWeight: 600 }}>{x.name}</span><b className="small" style={{ color: x.opened ? col(x.pct) : "var(--ink-3)" }}>{x.pct}%</b></div>
+              <div className="vbar2"><i style={{ width: `${x.pct}%`, background: col(x.pct) }} /></div>
+              <span className="tiny muted">{!x.opened ? "Ochmagan" : x.done ? "✓ Oxirigacha ko'rdi" : `${mmss(x.pos)} da to'xtadi`}</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

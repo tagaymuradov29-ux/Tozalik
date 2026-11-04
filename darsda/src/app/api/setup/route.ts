@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { seedDemoCourse, seedDemoNet, seedDemoProgress } from "@/lib/demo";
+import { seedDemoCourse, seedDemoNet, seedDemoProgress, seedDemoVideo } from "@/lib/demo";
 
 /** Bir martalik: bazani tozalab, 4 ta kirish (super / admin / kurator / o'quvchi) va namuna kursni tayyorlaydi.
  *  Faqat SETUP_TOKEN bilan ishlaydi va har bir token faqat bir marta bazani tozalaydi; keyin faqat tekshiruv hisobotini qaytaradi. */
@@ -49,6 +49,7 @@ export async function GET(req: Request) {
   const [demoCourse] = await sql<{ id: number }[]>`select c.id from courses c join platforms p on p.id = c.platform_id
     where p.slug = 'realmarketing' and c.title = 'Real Marketing 6.0' order by c.id limit 1`;
   const net = demoCourse ? await seedDemoNet(demoCourse.id) : false;
+  const video = demoCourse ? await seedDemoVideo(demoCourse.id) : false;
   // Tekshiruv: har bir parol aynan bitta akkauntga kiradimi
   const rows = await sql<{ role: string; password_hash: string; platform: string | null }[]>`
     select u.role, u.password_hash, p.name as platform from users u left join platforms p on p.id = u.platform_id
@@ -58,5 +59,5 @@ export async function GET(req: Request) {
     return { parol: pw, mos: m.length, kiradi: m.map((r) => `${r.role}${r.platform ? " · " + r.platform : ""}`) };
   });
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from users`;
-  return NextResponse.json({ reset: !done, net, phone, users: n, check });
+  return NextResponse.json({ reset: !done, net, video, phone, users: n, check });
 }
