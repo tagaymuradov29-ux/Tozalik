@@ -45,6 +45,17 @@ export async function backToSuper() {
   redirect("/super");
 }
 
+/** «Qaysi kursga kirmoqchisiz?» — o'quvchi o'z kurslari orasida o'tadi (bir raqam, bir xil parol) */
+export async function switchMyCourse(fd: FormData) {
+  const { requireUser } = await import("@/lib/auth");
+  const u = await requireUser(["student"]);
+  const id = Number(fd.get("id"));
+  const [ok] = await sql`select 1 from users s join users me on me.id = ${u.id}
+    where s.id = ${id} and s.platform_id = me.platform_id and s.phone = me.phone and s.role = 'student' and s.active and s.password_hash = me.password_hash`;
+  if (ok) await startSession(id);
+  redirect("/");
+}
+
 export async function logout(fd?: FormData) {
   const phone = String(fd?.get("phone") || "").replace(/\D/g, "");
   await endSession();
@@ -63,11 +74,22 @@ export async function join(_: FormState, fd: FormData): Promise<FormState> {
   const [inv] = await sql<{ platform_id: number; role: string; group_id: number | null }[]>`
     select platform_id, role, group_id from invites where code = ${code} and active`;
   if (!inv) return { error: "Taklif havolasi eskirgan yoki noto'g'ri" };
-  const [ex] = await sql`select id from users where platform_id = ${inv.platform_id} and phone = ${phone}`;
-  if (ex) return { error: "Bu raqam allaqachon ro'yxatdan o'tgan — kirish sahifasidan kiring" };
+  const ex = await sql<{ id: number; role: string; group_id: number | null; password_hash: string; name: string; course_id: number | null }[]>`
+    select u.id, u.role, u.group_id, u.password_hash, u.name, g.course_id from users u left join groups g on g.id = u.group_id
+    where u.platform_id = ${inv.platform_id} and u.phone = ${phone}`;
+  let hash = bcrypt.hashSync(pass, 10), nm = name;
+  if (ex.length) {
+    // Bu raqam platformada bor: o'quvchi yangi kursga qo'shiladi — o'z parolini kiritib tasdiqlaydi
+    const same = ex.find((x) => x.role === "student" && bcrypt.compareSync(pass, x.password_hash));
+    if (inv.role !== "student" || !same) return { error: "Bu raqam platformada bor — o'sha parolingizni kiriting (yangi kurs shu akkauntga qo'shiladi)" };
+    const [cg] = await sql<{ course_id: number }[]>`select course_id from groups where id = ${inv.group_id ?? 0}`;
+    const inCourse = ex.find((x) => x.role === "student" && cg && x.course_id === cg.course_id);
+    if (inCourse) { await startSession(inCourse.id); redirect("/"); }
+    hash = same.password_hash; nm = same.name;
+  }
   const [u] = await sql<{ id: number }[]>`
     insert into users (platform_id, phone, password_hash, name, role, group_id)
-    values (${inv.platform_id}, ${phone}, ${bcrypt.hashSync(pass, 10)}, ${name}, ${inv.role}, ${inv.role === "student" ? inv.group_id : null})
+    values (${inv.platform_id}, ${phone}, ${hash}, ${nm}, ${inv.role}, ${inv.role === "student" ? inv.group_id : null})
     returning id`;
   if (inv.role === "curator" && inv.group_id) {
     await sql`update groups set curator_id = ${u.id} where id = ${inv.group_id}`;

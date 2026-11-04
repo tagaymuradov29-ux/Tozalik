@@ -65,3 +65,16 @@ Maqsad: platformani tez qurib, tariflarni e'lon qilib, birinchi mijozga sotish. 
 ## 11. Keyingi bosqichlar
 - Xavfsizlik, darslar tarqalib ketmasligi — 2-bosqich, alohida IT mutaxassislar bilan.
 - Tariflar: o'rta tarif **1–1,5 mln so'm/oy**, keyinchalik 2–2,5 mln. Platforma yangilangach — tariflarni ishlab chiqish.
+
+## 12. Egasining javoblari (2026-11-04, raspakovka)
+- **Kirish:** Menta'dagidek — telefon raqam → «Kodni Telegram'ga» yoki «Kodni SMS orqali». Test rejimida parol ham qoladi; sotuvga chiqqanda o'quvchi uchun parol olib tashlanadi. Raqamga ulangan barcha kurslar ochiladi. Admin va kuratorlar ham kod (Telegram/SMS) bilan kira oladi.
+- **Telegram bot:** bitta umumiy **«Darsda» boti** (har mijozga alohida emas). Botga kirib tasdiqlangach (verify), bot o'quvchining kursiga va platforma sozlamalariga moslashadi.
+- **Workbook:** faqat Mini App'da; hamma kursda bo'lmaydi (sozlanadi).
+- **Bildirishnomalar:** bot va platformadan; sozlamalari platformada.
+- **Gamifikatsiya:** hammasi sozlanadi + «o'z qoidangiz»: istalgan harakat uchun ball qo'shish/ayirish.
+- **Bildirishnoma hodisalari:** taklif qilinganlarning hammasi (3 kun kirmadi, darsni ko'rmadi, video to'xtash joyi, haftalik hisobot).
+- **AI kurator bilimi:** darslar avtomatik matnga o'girilsa yaxshi; yoki egasi darslarni o'zi beradi. **Metodologik tahlil — har hafta.** Egasining metodologiyasi hujjat ko'rinishida bor.
+- **AI razgovor tushuntirishi:** asosan o'zbekcha, misollar o'rganilayotgan tilda (ikkalasi).
+- **Svayp:** taklif ma'qul. **Essential Words:** so'z, tarjima, transkripsiya, rasm; misollarni o'zimiz yozamiz.
+- **Menta:** egasi login-parolni beradi, birga kirib o'rganamiz.
+- **Dizayn:** egasi boshqa chatda dizayn ustida ishlaydi — unga to'liq prompt (docs/DIZAYN_PROMPT.md).

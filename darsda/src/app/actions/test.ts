@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { sql } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { isTester } from "@/lib/tester";
+import { studentIn } from "@/lib/accounts";
+import { startSession } from "@/lib/auth";
 
 /** 🧪 Sinov akkaunti boshqa kursga o'tadi:
  *  admin/kurator — tanlangan kurs; kurator — kuratori yo'q guruhga biriktiriladi; o'quvchi — kursning birinchi guruhiga o'tkaziladi */
@@ -18,7 +20,10 @@ export async function testSwitch(fd: FormData) {
   let [g] = await sql<{ id: number; curator_id: number | null }[]>`select id, curator_id from groups where course_id = ${c.id} order by id limit 1`;
   if (!g) [g] = await sql<{ id: number; curator_id: number | null }[]>`
     insert into groups (platform_id, course_id, name) values (${u.platform_id}, ${c.id}, '1-guruh') returning id, curator_id`;
-  if (u.role === "student") await sql`update users set group_id = ${g.id} where id = ${u.id}`;
+  if (u.role === "student") {
+    const sid = await studentIn(u.id, c.id);
+    if (sid) await startSession(sid);
+  }
   if (u.role === "curator") {
     const [mine] = await sql`select 1 from groups where course_id = ${c.id} and curator_id = ${u.id}`;
     if (!mine) await sql`update groups set curator_id = ${u.id} where id = (

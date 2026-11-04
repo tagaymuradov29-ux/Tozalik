@@ -33,6 +33,12 @@ export default async function Profil() {
         </div>
       </div>
 
+      <Link href="/kurslar" className="card row" style={{ gap: 12 }}>
+        <span style={{ fontSize: 24 }}>📚</span>
+        <div className="grow"><div className="h3">Kurslarim</div><div className="tiny muted">Qaysi kursga kirmoqchisiz — tanlash</div></div>
+        <span className="muted">›</span>
+      </Link>
+
       <div className="card">
         <h2 className="h2">Boshqa panelga o&apos;tish</h2>
         {other.length > 0 ? (

@@ -8,6 +8,7 @@ import { getBrand, MODS, okColor, type Settings } from "@/lib/platform";
 import { seedDemoCourse } from "@/lib/demo";
 import { FONTS, JOURNEYS } from "@/lib/journeys";
 import { ROAD_CHOICES } from "@/lib/roadmapSvg";
+import { studentIn } from "@/lib/accounts";
 import { CATEGORIES, LANGS, STARTER } from "@/lib/lang";
 import { localToUtc } from "@/lib/util";
 import type { FormState } from "./auth";
@@ -158,6 +159,9 @@ export async function newCourse(_: FormState, fd: FormData): Promise<FormState> 
     const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from vocab where course_id = ${courseId}`;
     if (!n) await sql`insert into vocab ${sql(STARTER[lang].map(([word, tr, translit], i) => ({ course_id: courseId, lesson_id: null, word, tr, translit, example: "", position: i })))}`;
   }
+  // Shu raqamdagi o'quvchi hisobi (sinov) ham yangi kursga darhol qo'shiladi — o'quvchi panelida kurs ko'rinadi
+  const [stu] = await sql<{ id: number }[]>`select id from users where platform_id = ${b.id} and phone = ${u.phone} and role = 'student' and active order by id limit 1`;
+  if (stu) await studentIn(stu.id, courseId);
   // Sinov kuratori (admin bilan bir raqamdagi) yangi kursning guruhiga ham biriktiriladi
   await sql`update groups set curator_id = (select k.id from users k where k.platform_id = ${b.id} and k.role = 'curator' and k.phone = ${u.phone} and k.active limit 1)
     where course_id = ${courseId} and curator_id is null and id = (select min(id) from groups where course_id = ${courseId})`;

@@ -10,6 +10,7 @@ import { getBrand, label, on, type Brand } from "@/lib/platform";
 import { journey } from "@/lib/journeys";
 import { stats as wstats, wordsFor } from "@/lib/til";
 import { langOf } from "@/lib/lang";
+import { myCourses } from "@/lib/accounts";
 import { SkyMini } from "@/components/Sky";
 import { fmtDay, fmtTime } from "@/lib/util";
 import { Head, Progress, RowLink, Avatar } from "@/components/ui";
@@ -50,6 +51,7 @@ async function StudentHome({ u }: { u: User }) {
   const b = await getBrand(u.platform_id);
   const [rank, F, K] = await Promise.all([ranking(course, u.group_id), flightData(ctx, u.id), on(b, "osmon") ? skyData(u, course) : null]);
   const R = road(ctx);
+  const mine = await myCourses(u);
   const TS = course.category === "til" ? wstats(await wordsFor(course.id, u.id)) : null;
   const TL = langOf(course.lang);
   const sat = F.A.filter((a) => a.st === "done").length;
@@ -64,7 +66,7 @@ async function StudentHome({ u }: { u: User }) {
 
   return (
     <main className="page">
-      <Head title={`Salom, ${first}`} right={<Bell name={u.name} />} sub={course.title} />
+      <Head title={`Salom, ${first}`} right={<Bell name={u.name} />} sub={mine.length > 1 ? <Link href="/kurslar" className="pill info" style={{ padding: "4px 10px" }}>{course.title} · {mine.length} ta kurs ▾</Link> : course.title} />
 
       <div className="card tight">
         <div className="row between">

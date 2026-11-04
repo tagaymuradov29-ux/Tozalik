@@ -171,8 +171,17 @@ export async function addUser(_: FormState, fd: FormData): Promise<FormState> {
     const [g] = await sql`select 1 from groups where id = ${gid} and platform_id = ${u.platform_id} and (${u.role === "admin"} or curator_id = ${u.id})`;
     if (!g) return { error: "Guruh topilmadi" };
   }
-  const [ex] = await sql`select 1 from users where platform_id = ${u.platform_id} and phone = ${phone}`;
-  if (ex) return { error: "Bu raqam allaqachon bor" };
+  const ex = await sql<{ id: number; role: string; course_id: number | null; password_hash: string }[]>`
+    select u.id, u.role, g.course_id, u.password_hash from users u left join groups g on g.id = u.group_id where u.platform_id = ${u.platform_id} and u.phone = ${phone}`;
+  if (role !== "student" && ex.some((x) => x.role === role)) return { error: "Bu raqam allaqachon bor" };
+  if (role === "student" && ex.some((x) => x.role === "student")) {
+    const [cg] = await sql<{ course_id: number }[]>`select course_id from groups where id = ${gid}`;
+    if (ex.some((x) => x.role === "student" && x.course_id === cg?.course_id)) return { error: "Bu o'quvchi shu kursda allaqachon bor" };
+    const prev = ex.find((x) => x.role === "student")!;
+    await sql`insert into users (platform_id, phone, password_hash, name, role, group_id) values (${u.platform_id}, ${phone}, ${prev.password_hash}, ${name}, 'student', ${gid})`;
+    revalidatePath("/", "layout");
+    return { ok: `${name} yangi kursga qo'shildi — avvalgi paroli bilan kiradi, kurslar ro'yxatida ikkalasi ham ko'rinadi` };
+  }
   await sql`insert into users (platform_id, phone, password_hash, name, role, group_id)
     values (${u.platform_id}, ${phone}, ${bcrypt.hashSync(pass, 10)}, ${name}, ${role}, ${role === "student" ? gid : null})`;
   revalidatePath("/", "layout");

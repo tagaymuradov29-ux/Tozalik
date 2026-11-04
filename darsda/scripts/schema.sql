@@ -22,7 +22,9 @@ create table if not exists users (
 );
 -- Bir raqam bitta platformada har xil rolda bo'lishi mumkin (test/demo akkauntlar): rolni parol ajratadi
 drop index if exists users_platform_phone;
-create unique index if not exists users_platform_phone_role on users (coalesce(platform_id, 0), phone, role);
+-- Bir raqam: har rolda bitta akkaunt; o'quvchi esa har kursda (guruhda) alohida hisobga ega bo'lishi mumkin
+drop index if exists users_platform_phone_role;
+create unique index if not exists users_identity on users (coalesce(platform_id, 0), phone, role, coalesce(group_id, 0));
 
 create table if not exists courses (
   id serial primary key,
