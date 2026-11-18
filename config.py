@@ -48,24 +48,25 @@ GROUP_REMINDER_HOUR: int = int(_get("GROUP_REMINDER_HOUR", "13"))
 CYCLE_DAYS: int = int(_get("CYCLE_DAYS", "7"))
 
 # Tozalik vazifalari shu sanadan boshlab beriladi
-# (23-sentyabr 2026 05:00 da beriladi -> 24-sentyabr 05:00 gacha topshiriladi)
-_ts = _get("TASKS_START_DATE", "2026-09-23")
+# (19-noyabr 2026 05:00 da beriladi -> 20-noyabr 05:00 gacha topshiriladi)
+_ts = _get("TASKS_START_DATE", "2026-11-19")
 TASKS_START_DATE: _dt.date = _dt.date.fromisoformat(_ts)
 
-# Boshlang'ich navbat tartibi. Bunyodning ID'si noma'lum bo'lgani uchun u ism
-# bo'yicha (quyidagi ro'yxatning 2-indeksi = Dush) aniqlanadi.
+# 🍳 OSHXONA alohida navbat — faqat quyidagi kishilar orasida aylanadi (ism bo'yicha).
+# Ro'yxat tartibi = navbat tartibi (0-sikl ro'yxatning birinchisidan boshlanadi).
+KITCHEN_NAMES: list[str] = [
+    x.strip().lower() for x in _get("KITCHEN_NAMES", "salohiddin, ilhom").split(",")
+    if x.strip()
+]
+
+# Umumiy navbat (🚽 Hojatxona+Koridor va 🚿 Dush+Musor) shu kishilar orasida aylanadi.
 INITIAL_ORDER: list[str] = [
     x.strip() for x in _get(
-        "INITIAL_ORDER", "Shaxzod Asadjonov, Shahzod Tog'aymurodov, Bunyod"
+        "INITIAL_ORDER", "Shaxzod Asadjonov, Shahzod Tog'aymurodov, Bunyod, Umar"
     ).split(",") if x.strip()
 ]
 
-# Aniq navbat tartibi — o'rin = vazifa indeksi:
-# 0=🍳 Oshxona, 1=🚽 Hojatxona+Koridor, 2=🚿 Dush+Musor.
-#   Shaxzod Asadjonov (199906622)  -> 0 (Oshxona)
-#   Admin (Shahzod Tog'aymurodov)  -> 1 (Hojatxona+Koridor)
-#   Bunyod (ism bo'yicha, index 2) -> 2 (Dush+Musor)
-# Jamshid, Ilhom pinlanmagan -> bu roster'da dam oladi.
+# Umumiy navbat uchun barqaror tartib kaliti (oshxona kishilari bundan ajratiladi).
 INITIAL_ORDER_IDS: dict[int, int] = {199906622: 0}
 for _a in ADMIN_IDS:
     INITIAL_ORDER_IDS.setdefault(_a, 1)

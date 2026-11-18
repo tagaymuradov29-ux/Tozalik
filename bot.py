@@ -39,6 +39,7 @@ from config import (
     GROUP_REMINDER_HOUR,
     INITIAL_ORDER,
     INITIAL_ORDER_IDS,
+    KITCHEN_NAMES,
     PRE_DEADLINE_HOUR,
     TZ,
     is_admin,
@@ -84,12 +85,22 @@ def is_away_on(resident, on_date: dt.date) -> bool:
     return au is not None
 
 
+POSTPONE_BTN = "⏳ Bir kun keyinga surish"
+
+# Username bo'yicha avtomatik qabul: /start bosganda shu username'li odam
+# darhol faol a'zo bo'lib, ko'rsatilgan ism bilan navbatga qo'shiladi.
+AUTO_APPROVE: dict[str, str] = {
+    "umaarlv": "Umar",
+}
+
+
 def main_menu(resident) -> ReplyKeyboardMarkup:
     away = bool(resident and resident["away_until"] is not None)
     rows = [
         [texts.BTN_MY_TASK, texts.BTN_REPORT],
         [texts.BTN_RESIDENTS, texts.BTN_RULES_FINES],
-        [texts.BTN_BACK if away else texts.BTN_AWAY, texts.BTN_HELP],
+        [POSTPONE_BTN, texts.BTN_BACK if away else texts.BTN_AWAY],
+        [texts.BTN_HELP],
     ]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
@@ -114,41 +125,62 @@ async def available_ids(on_date: dt.date) -> list[int]:
     return [r["telegram_id"] for r in residents]
 
 
+def _kitchen_ordered(ids: list[int], rec_by: dict) -> list[int]:
+    """ids ichidan oshxona navbatidagilarni KITCHEN_NAMES tartibida qaytaradi."""
+    out: list[int] = []
+    for key in KITCHEN_NAMES:
+        for tid in ids:
+            rec = rec_by.get(tid)
+            if rec and key in (rec["name"] or "").lower() and tid not in out:
+                out.append(tid)
+    return out
+
+
 def assign_with_forced(ids: list[int], cidx: int, forced: dict[int, str],
                        debt: dict[int, int] | None = None,
-                       doubles: set | None = None) -> dict[int, str | None]:
-    """Navbat taqsimoti:
-    - forced (rad etilgan) o'sha vazifani oladi;
-    - doubles (viloyatdan qaytgan) 2 ta joy oladi;
-    - navbatchilik qarzi (debt>0) bo'lganlar har siklda majburan navbatda;
-    - qolganlar adolatli aylanadi (cidx bo'yicha siljiydi).
+                       kitchen_ordered: list[int] | None = None) -> dict[int, str | None]:
+    """Taqsimot:
+    - 🍳 Oshxona (TASKS[0]) FAQAT kitchen_ordered (Salohiddin/Ilhom) orasida aylanadi;
+      kimdir oshxonaga 'majbur' bo'lsa (forced) o'sha oladi, aks holda cidx navbati.
+    - 🚽 Hojatxona va 🚿 Dush (TASKS[1], TASKS[2]) qolgan umumiy a'zolar orasida aylanadi;
+      forced va navbatchilik qarzi hisobga olinadi.
     """
     debt = debt or {}
-    doubles = doubles or set()
+    kitchen_ordered = kitchen_ordered or []
     result: dict[int, str | None] = {tid: None for tid in ids}
+    K = texts.TASKS[0]
+    GEN = [texts.TASKS[1], texts.TASKS[2]]
+    kset = set(kitchen_ordered)
+
+    # --- Oshxona (alohida navbat) ---
+    kperson = None
+    for tid in kitchen_ordered:
+        if forced.get(tid) == K:
+            kperson = tid
+            break
+    if kperson is None and kitchen_ordered:
+        kperson = kitchen_ordered[cidx % len(kitchen_ordered)]
+    if kperson is not None:
+        result[kperson] = K
+
+    # --- Umumiy navbat: Hojatxona, Dush ---
+    general_ids = [t for t in ids if t not in kset]
     taken_people, taken_tasks = set(), set()
-    for tid in ids:
+    for tid in general_ids:
         ft = forced.get(tid)
-        if ft and ft in texts.TASKS:
+        if ft in GEN and ft not in taken_tasks:
             result[tid] = ft
             taken_people.add(tid)
             taken_tasks.add(ft)
-    free_tasks = [t for t in texts.TASKS if t not in taken_tasks]
-    # Viloyatdan qaytganlarga 2 tadan joy (imkon bo'lsa)
-    for tid in ids:
-        if tid in doubles and tid not in taken_people and len(free_tasks) >= 2:
-            two = [free_tasks.pop(0), free_tasks.pop(0)]
-            result[tid] = " ➕ ".join(two)
-            taken_people.add(tid)
-    debt_people = [tid for tid in ids if tid not in taken_people and debt.get(tid, 0) > 0]
-    normal_people = [tid for tid in ids if tid not in taken_people and tid not in debt_people]
-    if normal_people:
-        shift = cidx % len(normal_people)
-        normal_people = normal_people[shift:] + normal_people[:shift]
-    free_people = debt_people + normal_people
-    k = min(len(free_people), len(free_tasks))
-    for j in range(k):
-        result[free_people[j]] = free_tasks[j]
+    free_tasks = [t for t in GEN if t not in taken_tasks]
+    debt_people = [t for t in general_ids if t not in taken_people and debt.get(t, 0) > 0]
+    normal = [t for t in general_ids if t not in taken_people and t not in debt_people]
+    if normal:
+        shift = cidx % len(normal)
+        normal = normal[shift:] + normal[:shift]
+    pool = debt_people + normal
+    for j in range(min(len(pool), len(free_tasks))):
+        result[pool[j]] = free_tasks[j]
     return result
 
 
@@ -160,6 +192,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             "🏠 Asosiy menyu 👇", reply_markup=main_menu(resident)
         )
+        return ConversationHandler.END
+    # Username bo'yicha avtomatik qabul (Umar va h.k.)
+    uname = (user.username or "").lower().lstrip("@")
+    if uname in AUTO_APPROVE:
+        nm = AUTO_APPROVE[uname]
+        await db.ensure_active_resident(user.id, nm)
+        if resident is None or not resident["name"]:
+            await db.update_resident_name(user.id, nm)
+        r2 = await db.get_resident(user.id)
+        await update.message.reply_text(
+            f"✅ <b>Xush kelibsiz, {nm}!</b>\nSiz navbatga qo'shildingiz.",
+            parse_mode=ParseMode.HTML, reply_markup=main_menu(r2))
         return ConversationHandler.END
     if resident and resident["status"] == "pending":
         await update.message.reply_text(texts.ALREADY_PENDING)
@@ -289,12 +333,12 @@ async def ensure_cycle_assignment(telegram_id: int, cyc: dt.date) -> str | None:
     if telegram_id not in ids:
         return None
     residents_all = await db.get_active_residents()
+    rec_by = {r["telegram_id"]: r for r in residents_all}
     forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
               if r["forced_task"] and r["duty_debt"] > 0}
     debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
-    doubles = {r["telegram_id"] for r in residents_all
-               if r["return_penalty"] > 0 and r["telegram_id"] in ids}
-    mapping = assign_with_forced(ids, rotation.cycle_index(cyc), forced, debt, doubles)
+    kitchen_ordered = _kitchen_ordered(ids, rec_by)
+    mapping = assign_with_forced(ids, rotation.cycle_index(cyc), forced, debt, kitchen_ordered)
     task = mapping.get(telegram_id)
     if task:
         await db.create_assignment(telegram_id, cyc, task)
@@ -344,6 +388,9 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await start_away(update, context, resident)
     elif text == texts.BTN_BACK:
         await came_back(update, context, resident)
+    elif text == POSTPONE_BTN:
+        ok, msg = await _postpone_core(user.id)
+        await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
     elif text == texts.BTN_HELP:
         await cmd_help(update, context)
 
@@ -1142,33 +1189,34 @@ async def on_return_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await query.edit_message_text(texts.AWAY_EXTEND_ASK)
 
 
-async def on_postpone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """'⏳ Bir kun keyinga surish' — vazifa muddatini +1 kunga siljitadi (bir marta)."""
-    query = update.callback_query
-    uid = query.from_user.id
+async def _postpone_core(uid: int):
+    """Joriy vazifani +1 kunga suradi. (ok, xabar_html) qaytaradi."""
     today = today_local()
     cyc = rotation.cycle_start(today)
     a = await db.get_assignment(uid, cyc)
     if not a or a["status"] != "assigned":
-        await query.answer("Kechiktirish uchun faol vazifa yo'q.", show_alert=True)
-        return
+        return False, "Kechiktirish uchun faol (bajarilmagan) vazifa yo'q."
     if a["postponed"]:
-        await query.answer("Bu vazifa allaqachon bir kun keyinga surilgan.", show_alert=True)
-        return
+        return False, "Bu vazifa allaqachon bir kun keyinga surilgan."
     if today > cyc + dt.timedelta(days=1):
-        await query.answer("Muddat o'tib ketgan — kechiktirib bo'lmaydi.", show_alert=True)
-        return
+        return False, "Muddat o'tib ketgan — kechiktirib bo'lmaydi."
     await db.set_assignment_postponed(a["id"])
     newdl = cyc + dt.timedelta(days=2)
-    await query.answer("Bir kun keyinga surildi ✅")
-    try:
-        await query.edit_message_text(
-            query.message.text_html +
-            f"\n\n⏳ <b>Bir kun keyinga surildi.</b>\n"
-            f"Yangi muddat: <b>{fmt_short(newdl)} 05:00</b> gacha.",
-            parse_mode=ParseMode.HTML)
-    except Exception:
-        pass
+    return True, (f"⏳ <b>Vazifangiz bir kun keyinga surildi.</b>\n"
+                  f"Yangi muddat: <b>{fmt_short(newdl)} 05:00</b> gacha.")
+
+
+async def on_postpone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Inline '⏳ Bir kun keyinga surish' tugmasi (vazifa xabari tagida)."""
+    query = update.callback_query
+    ok, msg = await _postpone_core(query.from_user.id)
+    await query.answer("Bir kun keyinga surildi ✅" if ok else msg, show_alert=not ok)
+    if ok:
+        try:
+            await query.edit_message_text(
+                query.message.text_html + "\n\n" + msg, parse_mode=ParseMode.HTML)
+        except Exception:
+            pass
 
 
 # =================== Foydalanuvchi buyruqlari ===================
@@ -1557,9 +1605,8 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
     forced = {r["telegram_id"]: r["forced_task"] for r in residents_all
               if r["forced_task"] and r["duty_debt"] > 0}
     debt = {r["telegram_id"]: r["duty_debt"] for r in residents_all}
-    doubles = {r["telegram_id"] for r in residents_all
-               if r["return_penalty"] > 0 and r["telegram_id"] in ids}
-    mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt, doubles)
+    kitchen_ordered = _kitchen_ordered(ids, rec_by)
+    mapping = assign_with_forced(ids, rotation.cycle_index(today), forced, debt, kitchen_ordered)
     deadline = today + dt.timedelta(days=1)
     name_by = {r["telegram_id"]: r["name"] for r in residents_all}
     for uid, task in mapping.items():
@@ -1585,10 +1632,6 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
             note += texts.penalty_note(remaining)
             if remaining <= 0:
                 await db.set_forced_task(uid, None)
-        if rec and rec["return_penalty"] > 0:
-            await db.set_return_penalty(uid, 0)  # 2 joy berildi, tozalandi
-            note += ("\n\n✈️ Navbatingizni o'tkazganingiz uchun bu hafta "
-                     "<b>2 ta joy</b> sizga berildi.")
         details = texts.task_details(task)
         chat = rec["proxy_uid"] if (rec and rec["proxy_uid"]) else uid
         if rec and rec["proxy_uid"]:
@@ -1944,6 +1987,30 @@ async def post_init(app: Application) -> None:
                         bunyod["telegram_id"] if bunyod else "topilmadi")
         except Exception as e:
             logger.error("reset_v12 XATOSI (bot crash bo'lmaydi): %s", e)
+    # Bir martalik: 19-noyabr to'liq reset + yangi tartib (oshxona alohida navbat)
+    if await db.get_setting("reset_v13") is None:
+        try:
+            # Hammani nolga: jarima, navbatchilik qarzi, barcha taqsimot
+            await db.clear_all_fines()
+            await db.reset_all_penalties()
+            await db.delete_all_assignments()
+            # Jamshid rotatsiyadan olib tashlanadi
+            await db.set_resident_status(653767745, "removed")
+            # Mavjud a'zolar faol va viloyatdan qaytgan (navbatda) bo'lsin
+            await db.ensure_active_resident(199906622, "Shaxzod Asadjonov")
+            for _a in ADMIN_IDS:
+                await db.ensure_active_resident(_a, "Shahzod Tog'aymurodov")
+            for _sub in ("bunyod", "ilhom"):
+                _r = await db.find_resident_by_name(_sub)
+                if _r:
+                    await db.ensure_active_resident(_r["telegram_id"], _r["name"])
+            for _r in await db.get_active_residents():
+                await db.clear_away(_r["telegram_id"])
+            await db.set_setting("tasks_paused", None)
+            await db.set_setting("reset_v13", "done")
+            logger.info("reset_v13: to'liq reset + oshxona alohida navbat, Jamshid chiqarildi.")
+        except Exception as e:
+            logger.error("reset_v13 XATOSI (bot crash bo'lmaydi): %s", e)
     await app.bot.set_my_commands([
         ("start", "Boshlash / menyu"),
         ("id", "Telegram ID'im"),
