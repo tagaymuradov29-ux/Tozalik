@@ -86,6 +86,7 @@ def is_away_on(resident, on_date: dt.date) -> bool:
 
 
 POSTPONE_BTN = "⏳ Bir kun keyinga surish"
+XFER_BTN = "🔄 Navbatni boshqaga berish"
 
 # Username bo'yicha avtomatik qabul: /start bosganda shu username'li odam
 # darhol faol a'zo bo'lib, ko'rsatilgan ism bilan navbatga qo'shiladi.
@@ -99,8 +100,8 @@ def main_menu(resident) -> ReplyKeyboardMarkup:
     rows = [
         [texts.BTN_MY_TASK, texts.BTN_REPORT],
         [texts.BTN_RESIDENTS, texts.BTN_RULES_FINES],
-        [POSTPONE_BTN, texts.BTN_BACK if away else texts.BTN_AWAY],
-        [texts.BTN_HELP],
+        [POSTPONE_BTN, XFER_BTN],
+        [texts.BTN_BACK if away else texts.BTN_AWAY, texts.BTN_HELP],
     ]
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
@@ -391,6 +392,8 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     elif text == POSTPONE_BTN:
         ok, msg = await _postpone_core(user.id)
         await update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+    elif text == XFER_BTN:
+        await on_xfer_menu(update, context)
     elif text == texts.BTN_HELP:
         await cmd_help(update, context)
 
@@ -1219,6 +1222,128 @@ async def on_postpone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             pass
 
 
+# =================== Navbatni boshqaga o'tkazish ===================
+async def _xfer_candidates(exclude_uid: int, cyc) -> list:
+    out = []
+    for r in await db.get_active_residents():
+        uid = r["telegram_id"]
+        if uid == exclude_uid or r["away_until"] is not None:
+            continue
+        if await db.get_assignment(uid, cyc) is None:
+            out.append(r)
+    return out
+
+
+async def _xfer_start_core(uid: int):
+    """(matn, klaviatura|None) — navbatni kimga berishni tanlash oynasi."""
+    today = today_local()
+    cyc = rotation.cycle_start(today)
+    a = await db.get_assignment(uid, cyc)
+    if not a or a["status"] != "assigned":
+        return "O'tkazish uchun faol (bajarilmagan) navbatingiz yo'q.", None
+    cands = await _xfer_candidates(uid, cyc)
+    if not cands:
+        return "Hozircha bo'sh (vazifasiz) a'zo yo'q — o'tkazib bo'lmaydi.", None
+    kb = InlineKeyboardMarkup(
+        [[InlineKeyboardButton(r["name"], callback_data=f"xpick:{r['telegram_id']}")]
+         for r in cands])
+    return (f"🔄 <b>{html_escape(a['areas'])}</b> navbatini kimga o'tkazasiz?\n"
+            "Tanlang — u qabul qilsa, navbat o'shanga o'tadi.", kb)
+
+
+async def on_xfer_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text, kb = await _xfer_start_core(update.effective_user.id)
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)
+
+
+async def on_xfer_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    text, kb = await _xfer_start_core(query.from_user.id)
+    await context.bot.send_message(query.from_user.id, text,
+                                   parse_mode=ParseMode.HTML, reply_markup=kb)
+
+
+async def on_xfer_pick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    a_uid = query.from_user.id
+    b_uid = int(query.data.split(":")[1])
+    cyc = rotation.cycle_start(today_local())
+    a = await db.get_assignment(a_uid, cyc)
+    if not a or a["status"] != "assigned":
+        await query.answer("Navbatingiz endi mavjud emas.", show_alert=True)
+        return
+    if await db.get_assignment(b_uid, cyc) is not None:
+        await query.answer("Bu a'zoda bu hafta vazifa bor — tanlab bo'lmaydi.", show_alert=True)
+        return
+    await query.answer()
+    arec = await db.get_resident(a_uid)
+    brec = await db.get_resident(b_uid)
+    aname = arec["name"] if arec else str(a_uid)
+    bname = brec["name"] if brec else str(b_uid)
+    try:
+        await context.bot.send_message(
+            b_uid,
+            f"🔄 <b>{html_escape(aname)}</b> sizga <b>{html_escape(a['areas'])}</b> "
+            "navbatchiligini o'tkazmoqchi.\nQabul qilasizmi?",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("✅ Qabul qilaman", callback_data=f"xok:{a_uid}"),
+                InlineKeyboardButton("❌ Yo'q", callback_data=f"xno:{a_uid}"),
+            ]]))
+        await query.edit_message_text(
+            f"✅ So'rov <b>{html_escape(bname)}</b> ga yuborildi. Tasdig'ini kuting.",
+            parse_mode=ParseMode.HTML)
+    except Exception:
+        await query.edit_message_text("⚠️ Bu a'zoga xabar yuborib bo'lmadi "
+                                      "(u botni boshlamagan bo'lishi mumkin).")
+
+
+async def on_xfer_accept(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    b_uid = query.from_user.id
+    a_uid = int(query.data.split(":")[1])
+    cyc = rotation.cycle_start(today_local())
+    a = await db.get_assignment(a_uid, cyc)
+    if not a or a["status"] != "assigned":
+        await query.answer()
+        await query.edit_message_text("Bu navbat endi mavjud emas (allaqachon o'zgargan).")
+        return
+    if await db.get_assignment(b_uid, cyc) is not None:
+        await query.answer("Sizda allaqachon vazifa bor.", show_alert=True)
+        return
+    await db.reassign_assignment(a["id"], b_uid)
+    await query.answer("Qabul qilindi ✅")
+    newdl = cyc + dt.timedelta(days=2 if a["postponed"] else 1)
+    await query.edit_message_text(
+        f"✅ Qabul qildingiz. Endi <b>{html_escape(a['areas'])}</b> sizda.\n"
+        f"⏰ Muddat: <b>{fmt_short(newdl)} 05:00</b> gacha.", parse_mode=ParseMode.HTML)
+    brec = await db.get_resident(b_uid)
+    bname = brec["name"] if brec else str(b_uid)
+    try:
+        await context.bot.send_message(
+            a_uid, f"✅ <b>{html_escape(bname)}</b> navbatingizni qabul qildi. "
+            f"<b>{html_escape(a['areas'])}</b> endi unda.", parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
+
+
+async def on_xfer_decline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    b_uid = query.from_user.id
+    a_uid = int(query.data.split(":")[1])
+    await query.answer()
+    await query.edit_message_text("❌ Rad etdingiz. Navbat o'z egasida qoladi.")
+    brec = await db.get_resident(b_uid)
+    bname = brec["name"] if brec else str(b_uid)
+    try:
+        await context.bot.send_message(
+            a_uid, f"❌ <b>{html_escape(bname)}</b> navbatni qabul qilmadi. "
+            "Navbat sizda qoladi.", parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
+
+
 # =================== Foydalanuvchi buyruqlari ===================
 async def cmd_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
@@ -1644,8 +1769,10 @@ async def job_morning(context: ContextTypes.DEFAULT_TYPE) -> None:
                     + details + note)
         kb = None
         if not (rec and rec["proxy_uid"]):
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton(
-                "⏳ Bir kun keyinga surish", callback_data="pp")]])
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("⏳ Bir kun keyinga surish", callback_data="pp")],
+                [InlineKeyboardButton("🔄 Navbatni boshqaga berish", callback_data="xfer")],
+            ])
         try:
             m = await context.bot.send_message(chat, body, parse_mode=ParseMode.HTML,
                                                reply_markup=kb)
@@ -2049,6 +2176,10 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_report_button, pattern=r"^repx?:"))
     app.add_handler(CallbackQueryHandler(on_return_buttons, pattern=r"^back:"))
     app.add_handler(CallbackQueryHandler(on_postpone, pattern=r"^pp$"))
+    app.add_handler(CallbackQueryHandler(on_xfer_start, pattern=r"^xfer$"))
+    app.add_handler(CallbackQueryHandler(on_xfer_pick, pattern=r"^xpick:"))
+    app.add_handler(CallbackQueryHandler(on_xfer_accept, pattern=r"^xok:"))
+    app.add_handler(CallbackQueryHandler(on_xfer_decline, pattern=r"^xno:"))
     app.add_handler(CallbackQueryHandler(show_residents_week, pattern=r"^res7$"))
     app.add_handler(CallbackQueryHandler(show_task_distribution, pattern=r"^restasks$"))
     app.add_handler(CallbackQueryHandler(show_all_fines, pattern=r"^resfines$"))

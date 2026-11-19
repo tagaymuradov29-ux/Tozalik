@@ -389,6 +389,15 @@ async def set_assignment_postponed(assignment_id: int) -> None:
         )
 
 
+async def reassign_assignment(assignment_id: int, new_uid: int) -> None:
+    """Navbatni boshqa a'zoga o'tkazish (egasini almashtirish)."""
+    async with _pool.acquire() as con:
+        await con.execute(
+            "UPDATE assignments SET telegram_id=$2, msg_chat=NULL, msg_id=NULL "
+            "WHERE id=$1", assignment_id, new_uid
+        )
+
+
 async def delete_future_assignments(telegram_id: int, from_date: dt.date) -> None:
     async with _pool.acquire() as con:
         await con.execute(
